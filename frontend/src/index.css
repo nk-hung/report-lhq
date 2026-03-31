@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Alternating stripe colors for report table groups */
+.ant-table-tbody > tr.bg-gray-100 > td {
+  background-color: #f3f4f6 !important;
+}
+
+.ant-table-tbody > tr.bg-white > td {
+  background-color: #ffffff !important;
+}
+
+.report-table .report-header-dark {
+  background-color: #073763 !important;
+  color: #ffffff !important;
+}
+
+.report-table .report-header-light {
+  background-color: #c9daf8 !important;
+  color: #000000 !important;
+}
+
+.report-table .report-header-dark .ant-table-column-sorters,
+.report-table .report-header-light .ant-table-column-sorters,
+.report-table .report-header-dark .ant-table-column-title,
+.report-table .report-header-light .ant-table-column-title {
+  color: inherit !important;
+}
+
+.report-table .ant-table-tbody > tr > td.report-subid-highlight {
+  background-color: #b6d7a8 !important;
+}
+
+#root {
+  min-height: 100vh;
+}
