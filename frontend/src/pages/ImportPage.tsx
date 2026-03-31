@@ -42,7 +42,7 @@ export default function ImportPage() {
 
   return (
     <div>
-      <Title level={3}>Import Files</Title>
+      <Title level={3}>Nhập file dữ liệu</Title>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         <Card title="File Hộ Kinh Doanh (.xlsx / .csv)">
           <Dragger
@@ -62,7 +62,7 @@ export default function ImportPage() {
           </Dragger>
         </Card>
 
-        <Card title="File Affiliate Commission (.xlsx / .csv)">
+        <Card title="File Hoa hồng Affiliate (.xlsx / .csv)">
           <Dragger
             accept=".xlsx,.xls,.csv"
             maxCount={1}

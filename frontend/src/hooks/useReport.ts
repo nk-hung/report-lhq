@@ -2,6 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../api/axios';
 import type { ApiResponse, TotalReport, CompareResponse } from '../types';
 
+interface UseCompareReportOptions {
+  enabled?: boolean;
+}
+
 export function useTotalReport() {
   return useQuery({
     queryKey: ['report', 'total'],
@@ -12,9 +16,13 @@ export function useTotalReport() {
   });
 }
 
-export function useCompareReport(sessionId?: string | null) {
+export function useCompareReport(
+  sessionId?: string | null,
+  options?: UseCompareReportOptions,
+) {
   return useQuery({
     queryKey: ['report', 'compare', sessionId ?? 'latest'],
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       const params = sessionId ? { sessionId } : {};
       const res = await api.get<ApiResponse<CompareResponse>>('/report/compare', { params });

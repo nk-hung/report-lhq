@@ -35,6 +35,14 @@ body {
   background-color: #b6d7a8 !important;
 }
 
+.report-table .ant-table-tbody > tr.report-row-selected > td {
+  background-color: #fff1b8 !important;
+}
+
+.report-table .ant-table-tbody > tr.report-row-selected > td.report-subid-highlight {
+  background-color: #d9f7be !important;
+}
+
 #root {
   min-height: 100vh;
 }

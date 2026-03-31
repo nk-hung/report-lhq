@@ -52,7 +52,7 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <Title level={3}>Dashboard</Title>
+      <Title level={3}>Tổng quan</Title>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
         {cards.map((card) => (
           <Card

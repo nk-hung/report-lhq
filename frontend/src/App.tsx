@@ -8,6 +8,7 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import ImportPage from './pages/ImportPage';
 import ReportPage from './pages/ReportPage';
+import SavedProductsPage from './pages/SavedProductsPage';
 import AppLayout from './components/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -38,6 +39,7 @@ function App() {
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/import" element={<ImportPage />} />
               <Route path="/report" element={<ReportPage />} />
+              <Route path="/saved-products" element={<SavedProductsPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

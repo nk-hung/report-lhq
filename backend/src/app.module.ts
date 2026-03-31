@@ -8,6 +8,8 @@ import { RequestLoggerMiddleware } from './common/middleware/request-logger.midd
 import { AuthModule } from './auth/auth.module';
 import { ImportModule } from './import/import.module';
 import { ReportModule } from './report/report.module';
+import { UserPreferencesModule } from './user-preferences/user-preferences.module';
+import { SavedProductsModule } from './saved-products/saved-products.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { ReportModule } from './report/report.module';
     AuthModule,
     ImportModule,
     ReportModule,
+    UserPreferencesModule,
+    SavedProductsModule,
   ],
   providers: [
     {

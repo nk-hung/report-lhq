@@ -1,11 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Table, Typography, Spin, Button, Space } from 'antd';
 import { DoubleLeftOutlined, LeftOutlined, RightOutlined, DoubleRightOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { useSearchParams } from 'react-router-dom';
 import { useCompareReport } from '../hooks/useReport';
+import { useHighlight } from '../hooks/useHighlight';
+import { useSavedProducts } from '../hooks/useSavedProducts';
 import type { CompareRecord } from '../types';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 function formatVND(value: number): string {
   return Math.round(value).toLocaleString('vi-VN');
@@ -42,12 +45,33 @@ function useRowMerge(records: CompareRecord[]) {
 }
 
 export default function ReportPage() {
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sessionId = searchParams.get('sessionId');
   const { data, isLoading } = useCompareReport(sessionId);
+  const {
+    highlightedSubId2s,
+    highlightedSet,
+    toggleHighlight,
+    clearHighlights,
+    isUpdating: isHighlightUpdating,
+  } = useHighlight();
+  const { savedProductSet, toggleSavedProduct, isUpdating: isSavedProductsUpdating } = useSavedProducts();
 
   const records = data?.records ?? [];
   const { rowSpanMap } = useRowMerge(records);
   const highlightedSubIdThreshold = 5_000_000;
+
+  const setSessionId = (nextSessionId: string | null) => {
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (nextSessionId) {
+      nextParams.set('sessionId', nextSessionId);
+    } else {
+      nextParams.delete('sessionId');
+    }
+
+    setSearchParams(nextParams, { replace: true });
+  };
 
   const handleNewest = () => setSessionId(null);
 
@@ -73,10 +97,6 @@ export default function ReportPage() {
 
   const maxDays = data?.maxDays ?? 0;
 
-  const mergedCellProps = (_record: CompareRecord, index: number | undefined) => ({
-    rowSpan: rowSpanMap.get(index ?? 0) ?? 1,
-  });
-
   const hieuQuaCellBg = '#d9ead3';
 
   const columns: ColumnsType<CompareRecord> = [
@@ -88,11 +108,44 @@ export default function ReportPage() {
       width: 180,
       onHeaderCell: () => ({ className: 'report-header-dark' }),
       render: (text: string) => (
-        <span className="font-semibold">{text}</span>
+        <button
+          type="button"
+          className={`cursor-pointer border-0 bg-transparent p-0 font-semibold ${highlightedSet.has(text) ? 'text-[#ad6800]' : 'text-[#073763]'}`}
+          onClick={() => {
+            void toggleHighlight(text);
+          }}
+        >
+          {text}
+        </button>
       ),
-      onCell: (record, index) => ({
+      onCell: (record: CompareRecord, index: number | undefined) => ({
         rowSpan: rowSpanMap.get(index ?? 0) ?? 1,
         className: record.tln > highlightedSubIdThreshold ? 'report-subid-highlight' : undefined,
+      }),
+    },
+    {
+      title: 'Lưu',
+      key: 'saved',
+      fixed: 'left',
+      width: 100,
+      onHeaderCell: () => ({ className: 'report-header-dark' }),
+      render: (_: unknown, record: CompareRecord) => {
+        const isSaved = savedProductSet.has(record.subId);
+
+        return (
+          <Button
+            size="small"
+            type={isSaved ? 'primary' : 'default'}
+            onClick={() => {
+              void toggleSavedProduct(record.subId);
+            }}
+          >
+            {isSaved ? 'Bỏ lưu' : 'Lưu'}
+          </Button>
+        );
+      },
+      onCell: (_record: CompareRecord, index: number | undefined) => ({
+        rowSpan: rowSpanMap.get(index ?? 0) ?? 1,
       }),
     },
     {
@@ -109,7 +162,7 @@ export default function ReportPage() {
           onHeaderCell: () => ({
             style: { backgroundColor: hieuQuaCellBg, color: '#000000', fontWeight: 'bold', textAlign: 'center' as const },
           }),
-          onCell: (record: CompareRecord, index: number | undefined) => ({
+          onCell: (_record: CompareRecord, index: number | undefined) => ({
             rowSpan: rowSpanMap.get(index ?? 0) ?? 1,
           }),
           render: (val: number) => formatVND(val),
@@ -122,7 +175,7 @@ export default function ReportPage() {
           onHeaderCell: () => ({
             style: { backgroundColor: hieuQuaCellBg, color: '#000000', fontWeight: 'bold', textAlign: 'center' as const },
           }),
-          onCell: (record: CompareRecord, index: number | undefined) => ({
+          onCell: (_record: CompareRecord, index: number | undefined) => ({
             rowSpan: rowSpanMap.get(index ?? 0) ?? 1,
           }),
           render: (val: number) => formatVND(val),
@@ -135,7 +188,7 @@ export default function ReportPage() {
           onHeaderCell: () => ({
             style: { backgroundColor: hieuQuaCellBg, color: '#000000', fontWeight: 'bold', textAlign: 'center' as const },
           }),
-          onCell: (record: CompareRecord, index: number | undefined) => ({
+          onCell: (_record: CompareRecord, index: number | undefined) => ({
             rowSpan: rowSpanMap.get(index ?? 0) ?? 1,
           }),
           render: (val: number) => (
@@ -235,15 +288,32 @@ export default function ReportPage() {
           </Button>
         </Space>
       </div>
+      <div className="mb-4 flex flex-col gap-3 rounded-lg border border-[#ffe58f] bg-[#fffbe6] p-4 md:flex-row md:items-center md:justify-between">
+        <Text strong>
+          Đang highlight: {highlightedSubId2s.length} mã hàng hóa
+        </Text>
+        <Space wrap>
+          <Button
+            onClick={() => {
+              void clearHighlights();
+            }}
+            disabled={highlightedSubId2s.length === 0 || isHighlightUpdating}
+          >
+            Xóa highlight
+          </Button>
+          {isSavedProductsUpdating ? <Text type="secondary">Đang đồng bộ mã đã lưu...</Text> : null}
+        </Space>
+      </div>
       <Table<CompareRecord>
         className="report-table"
         columns={columns}
         dataSource={records}
-        rowKey={(_, index) => `row-${index}`}
+        rowKey={(record: CompareRecord, index?: number) => `${record.subId}-${index ?? 0}`}
         scroll={{ x: 'max-content' }}
         bordered
         size="small"
         pagination={false}
+        rowClassName={(record: CompareRecord) => (highlightedSet.has(record.subId) ? 'report-row-selected' : '')}
       />
     </div>
   );

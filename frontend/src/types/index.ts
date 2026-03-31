@@ -52,3 +52,18 @@ export interface CompareResponse {
   nextSessionId: string | null;
   oldestSessionId: string | null;
 }
+
+export interface UserPreferences {
+  highlightedSubId2s: string[];
+}
+
+export interface SavedProduct {
+  id?: string;
+  subId2: string;
+}
+
+export interface SavedProductStats {
+  tcp: number;
+  tdt: number;
+  hq: number;
+}

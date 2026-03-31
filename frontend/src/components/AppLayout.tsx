@@ -5,6 +5,7 @@ import {
   DashboardOutlined,
   UploadOutlined,
   BarChartOutlined,
+  SaveOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -23,17 +24,22 @@ export default function AppLayout() {
     {
       key: '/dashboard',
       icon: <DashboardOutlined />,
-      label: 'Dashboard',
+      label: 'Tổng quan',
     },
     {
       key: '/import',
       icon: <UploadOutlined />,
-      label: 'Import',
+      label: 'Nhập liệu',
     },
     {
       key: '/report',
       icon: <BarChartOutlined />,
-      label: 'Report',
+      label: 'Báo cáo',
+    },
+    {
+      key: '/saved-products',
+      icon: <SaveOutlined />,
+      label: 'Sản phẩm đã lưu',
     },
     {
       key: 'logout',
@@ -80,8 +86,10 @@ export default function AppLayout() {
           </span>
           <span className="ml-4 font-semibold text-lg">Camp Report App</span>
         </Header>
-        <Content className="m-4 p-6 bg-white rounded-lg min-h-[280px]">
-          <Outlet />
+        <Content className="m-4 min-h-70">
+          <div className="min-w-0 rounded-lg bg-white p-6">
+            <Outlet />
+          </div>
         </Content>
       </Layout>
     </Layout>
