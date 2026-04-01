@@ -10,6 +10,9 @@ export class SavedProduct {
 
   @Prop({ required: true })
   subId2!: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'ProductFolder', default: null })
+  folderId?: Types.ObjectId;
 }
 
 export const SavedProductSchema = SchemaFactory.createForClass(SavedProduct);

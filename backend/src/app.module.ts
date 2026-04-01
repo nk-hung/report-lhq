@@ -10,6 +10,7 @@ import { ImportModule } from './import/import.module';
 import { ReportModule } from './report/report.module';
 import { UserPreferencesModule } from './user-preferences/user-preferences.module';
 import { SavedProductsModule } from './saved-products/saved-products.module';
+import { ProductFoldersModule } from './product-folders/product-folders.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { SavedProductsModule } from './saved-products/saved-products.module';
     ReportModule,
     UserPreferencesModule,
     SavedProductsModule,
+    ProductFoldersModule,
   ],
   providers: [
     {

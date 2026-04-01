@@ -1,6 +1,6 @@
 import { Form, Input, Button, Card, Typography } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
-import { Link, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useLogin, isAuthenticated } from '../hooks/useAuth';
 import type { LoginRequest } from '../types';
 
@@ -57,9 +57,6 @@ export default function LoginPage() {
               Đăng nhập
             </Button>
           </Form.Item>
-          <div className="text-center">
-            Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
-          </div>
         </Form>
       </Card>
     </div>

@@ -11,9 +11,18 @@ export interface RegisterRequest {
 export interface AuthResponse {
   data: {
     access_token: string;
+    username: string;
+    role: string;
   };
   message: string;
   statusCode: number;
+}
+
+export interface UserInfo {
+  _id: string;
+  username: string;
+  role: string;
+  createdAt: string;
 }
 
 export interface TotalReport {
@@ -57,13 +66,26 @@ export interface UserPreferences {
   highlightedSubId2s: string[];
 }
 
+export interface ProductFolder {
+  _id: string;
+  name: string;
+}
+
 export interface SavedProduct {
   id?: string;
   subId2: string;
+  folderId?: string | null;
 }
 
 export interface SavedProductStats {
   tcp: number;
   tdt: number;
   hq: number;
+}
+
+export interface ImportSession {
+  _id: string;
+  importDate: string;
+  importOrder: number;
+  recordCount: number;
 }

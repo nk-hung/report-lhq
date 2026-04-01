@@ -12,9 +12,9 @@ function normalizeSavedProducts(payload: unknown): SavedProduct[] {
   }
 
   return payload
-    .map((item) => {
+    .map((item): SavedProduct | null => {
       if (typeof item === 'string' && item.trim().length > 0) {
-        return { subId2: item } satisfies SavedProduct;
+        return { subId2: item };
       }
 
       if (!item || typeof item !== 'object') {
@@ -27,6 +27,7 @@ function normalizeSavedProducts(payload: unknown): SavedProduct[] {
         subId2?: unknown;
         subId?: unknown;
         sub_id2?: unknown;
+        folderId?: unknown;
       };
 
       const subId2 = candidate.subId2 ?? candidate.subId ?? candidate.sub_id2;
@@ -35,8 +36,9 @@ function normalizeSavedProducts(payload: unknown): SavedProduct[] {
       }
 
       const id = typeof candidate.id === 'string' ? candidate.id : typeof candidate._id === 'string' ? candidate._id : undefined;
+      const folderId = typeof candidate.folderId === 'string' ? candidate.folderId : null;
 
-      return { id, subId2 } satisfies SavedProduct;
+      return { id, subId2, folderId };
     })
     .filter((item): item is SavedProduct => Boolean(item));
 }
@@ -55,16 +57,16 @@ export function useSavedProducts() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (subId2: string) => {
-      await api.post('/saved-products', { subId2 });
-      return subId2;
+    mutationFn: async ({ subId2, folderId }: { subId2: string; folderId?: string | null }) => {
+      await api.post('/saved-products', { subId2, folderId: folderId ?? undefined });
+      return { subId2, folderId: folderId ?? null };
     },
-    onMutate: async (subId2) => {
+    onMutate: async ({ subId2, folderId }) => {
       await queryClient.cancelQueries({ queryKey: savedProductsQueryKey });
 
       const previous = queryClient.getQueryData<SavedProduct[]>(savedProductsQueryKey) ?? [];
       if (!previous.some((item) => item.subId2 === subId2)) {
-        queryClient.setQueryData<SavedProduct[]>(savedProductsQueryKey, [...previous, { subId2 }]);
+        queryClient.setQueryData<SavedProduct[]>(savedProductsQueryKey, [...previous, { subId2, folderId: folderId ?? null }]);
       }
 
       return { previous };
@@ -110,12 +112,25 @@ export function useSavedProducts() {
   const savedProducts = query.data ?? [];
   const savedProductSet = new Set(savedProducts.map((item) => item.subId2));
 
-  const saveProduct = async (subId2: string) => {
+  const moveProductMutation = useMutation({
+    mutationFn: async ({ subId2, folderId }: { subId2: string; folderId: string | null }) => {
+      await api.patch(`/saved-products/${encodeURIComponent(subId2)}/move`, { folderId });
+      return { subId2, folderId };
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: savedProductsQueryKey });
+    },
+    onError: () => {
+      message.error('Không thể di chuyển mã hàng hóa.');
+    },
+  });
+
+  const saveProduct = async (subId2: string, folderId?: string | null) => {
     if (!subId2 || savedProductSet.has(subId2)) {
       return;
     }
 
-    await saveMutation.mutateAsync(subId2);
+    await saveMutation.mutateAsync({ subId2, folderId });
   };
 
   const unsaveProduct = async (subId2: string) => {
@@ -126,22 +141,27 @@ export function useSavedProducts() {
     await unsaveMutation.mutateAsync(subId2);
   };
 
-  const toggleSavedProduct = async (subId2: string) => {
+  const toggleSavedProduct = async (subId2: string, folderId?: string | null) => {
     if (savedProductSet.has(subId2)) {
       await unsaveProduct(subId2);
       return;
     }
 
-    await saveProduct(subId2);
+    await saveProduct(subId2, folderId);
+  };
+
+  const moveProduct = async (subId2: string, folderId: string | null) => {
+    await moveProductMutation.mutateAsync({ subId2, folderId });
   };
 
   return {
     savedProducts,
     savedProductSet,
     isLoading: query.isLoading,
-    isUpdating: saveMutation.isPending || unsaveMutation.isPending,
+    isUpdating: saveMutation.isPending || unsaveMutation.isPending || moveProductMutation.isPending,
     saveProduct,
     unsaveProduct,
     toggleSavedProduct,
+    moveProduct,
   };
 }

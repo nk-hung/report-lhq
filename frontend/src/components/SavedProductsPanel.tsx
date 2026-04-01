@@ -1,5 +1,6 @@
-import { Button, Card, Empty, List, Tag, Typography } from 'antd';
-import type { SavedProduct, SavedProductStats } from '../types';
+import { Button, Card, Dropdown, Empty, List, Tag, Typography } from 'antd';
+import { SwapOutlined } from '@ant-design/icons';
+import type { ProductFolder, SavedProduct, SavedProductStats } from '../types';
 
 const { Text } = Typography;
 
@@ -8,8 +9,11 @@ interface SavedProductsPanelProps {
   highlightedSet: Set<string>;
   statsBySubId?: Record<string, SavedProductStats>;
   loading?: boolean;
+  folders?: ProductFolder[];
+  currentFolderId?: string | null;
   onSelect: (subId2: string) => void;
   onToggleSave: (subId2: string) => void;
+  onMoveProduct?: (subId2: string, folderId: string | null) => void;
 }
 
 function formatVND(value: number): string {
@@ -25,9 +29,28 @@ export default function SavedProductsPanel({
   highlightedSet,
   statsBySubId,
   loading,
+  folders = [],
+  currentFolderId,
   onSelect,
   onToggleSave,
+  onMoveProduct,
 }: SavedProductsPanelProps) {
+  const getMoveMenuItems = (item: SavedProduct) => {
+    const menuItems: { key: string; label: string }[] = [];
+
+    if (item.folderId) {
+      menuItems.push({ key: 'uncategorized', label: 'Chưa phân loại' });
+    }
+
+    for (const folder of folders) {
+      if (folder._id !== item.folderId) {
+        menuItems.push({ key: folder._id, label: folder.name });
+      }
+    }
+
+    return menuItems;
+  };
+
   return (
     <Card
       title="Sản phẩm đã lưu"
@@ -44,6 +67,7 @@ export default function SavedProductsPanel({
           renderItem={(item) => {
             const stats = statsBySubId?.[item.subId2];
             const isHighlighted = highlightedSet.has(item.subId2);
+            const moveItems = getMoveMenuItems(item);
 
             return (
               <List.Item className="px-0!">
@@ -56,6 +80,11 @@ export default function SavedProductsPanel({
                     <div className="flex items-center gap-2">
                       <Text strong>{item.subId2}</Text>
                       {isHighlighted ? <Tag color="gold">Đang highlight</Tag> : null}
+                      {currentFolderId === null && item.folderId && folders.length > 0 ? (
+                        <Tag color="default">
+                          {folders.find((f) => f._id === item.folderId)?.name ?? ''}
+                        </Tag>
+                      ) : null}
                     </div>
                     {stats ? (
                       <Text type="secondary" className="block mt-1 text-xs">
@@ -67,9 +96,26 @@ export default function SavedProductsPanel({
                       </Text>
                     )}
                   </button>
-                  <Button size="small" onClick={() => onToggleSave(item.subId2)}>
-                    Bỏ lưu
-                  </Button>
+                  <div className="flex gap-1">
+                    {onMoveProduct && moveItems.length > 0 ? (
+                      <Dropdown
+                        menu={{
+                          items: moveItems,
+                          onClick: ({ key }) => {
+                            onMoveProduct(item.subId2, key === 'uncategorized' ? null : key);
+                          },
+                        }}
+                        trigger={['click']}
+                      >
+                        <Button size="small" icon={<SwapOutlined />}>
+                          Chuyển
+                        </Button>
+                      </Dropdown>
+                    ) : null}
+                    <Button size="small" onClick={() => onToggleSave(item.subId2)}>
+                      Bỏ lưu
+                    </Button>
+                  </div>
                 </div>
               </List.Item>
             );

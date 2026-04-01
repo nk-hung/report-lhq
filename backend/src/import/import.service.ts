@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import * as XLSX from 'xlsx';
@@ -15,10 +19,12 @@ interface ShopeeRow {
   subId: string;
   campaignName: string;
   cp: number;
+  joinColumn: 'sub_id1' | 'sub_id2';
 }
 
 interface AffiliateRow {
-  subId: string;
+  subId1: string;
+  subId2: string;
   dt: number;
 }
 
@@ -45,6 +51,88 @@ export class ImportService {
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
       mime === 'application/vnd.ms-excel'
     );
+  }
+
+  /**
+   * Get all import sessions for a user, sorted by importDate DESC.
+   * Each session includes recordCount (number of ImportRecords).
+   */
+  async getSessions(userId: string) {
+    const userObjId = new Types.ObjectId(userId);
+
+    const sessions = await this.sessionModel
+      .find({ userId: userObjId })
+      .sort({ importDate: -1, importOrder: -1 })
+      .lean();
+
+    // Get record counts for all sessions in one aggregation
+    const counts = await this.recordModel.aggregate([
+      { $match: { userId: userObjId } },
+      { $group: { _id: '$sessionId', recordCount: { $sum: 1 } } },
+    ]);
+
+    const countMap = new Map<string, number>();
+    for (const c of counts) {
+      countMap.set(c._id.toString(), c.recordCount);
+    }
+
+    return sessions.map((s) => ({
+      _id: s._id,
+      importDate: s.importDate,
+      importOrder: s.importOrder,
+      recordCount: countMap.get(s._id.toString()) || 0,
+    }));
+  }
+
+  /**
+   * Delete a session and all its records.
+   * Then recalculate importOrder for remaining sessions (sorted by importDate ASC).
+   * Also update importOrder in corresponding ImportRecords.
+   */
+  async deleteSession(sessionId: string, userId: string) {
+    const userObjId = new Types.ObjectId(userId);
+    const sessionObjId = new Types.ObjectId(sessionId);
+
+    // Verify the session exists and belongs to the user
+    const session = await this.sessionModel.findOne({
+      _id: sessionObjId,
+      userId: userObjId,
+    });
+
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+
+    // Delete all records belonging to this session
+    await this.recordModel.deleteMany({ sessionId: sessionObjId });
+
+    // Delete the session itself
+    await this.sessionModel.deleteOne({ _id: sessionObjId });
+
+    // Recalculate importOrder for remaining sessions
+    const remainingSessions = await this.sessionModel
+      .find({ userId: userObjId })
+      .sort({ importDate: 1, importOrder: 1 })
+      .lean();
+
+    for (let i = 0; i < remainingSessions.length; i++) {
+      const newOrder = i + 1;
+      const s = remainingSessions[i]!;
+
+      if (s.importOrder !== newOrder) {
+        await this.sessionModel.updateOne(
+          { _id: s._id },
+          { $set: { importOrder: newOrder } },
+        );
+
+        await this.recordModel.updateMany(
+          { sessionId: s._id },
+          { $set: { importOrder: newOrder } },
+        );
+      }
+    }
+
+    return { deleted: true };
   }
 
   async processUpload(
@@ -86,19 +174,28 @@ export class ImportService {
     });
     await session.save();
 
-    // Build affiliate lookup map: DT = SUM(Tổng hoa hồng đơn hàng) GROUP BY Sub_id2
-    const affiliateMap = new Map<string, number>();
+    // Build affiliate lookup maps: DT = SUM(Tổng hoa hồng đơn hàng) GROUP BY Sub_id1 / Sub_id2
+    const affiliateMapById1 = new Map<string, number>();
+    const affiliateMapById2 = new Map<string, number>();
     for (const row of affiliateData) {
-      affiliateMap.set(
-        row.subId,
-        (affiliateMap.get(row.subId) || 0) + row.dt,
-      );
+      if (row.subId1) {
+        affiliateMapById1.set(
+          row.subId1,
+          (affiliateMapById1.get(row.subId1) || 0) + row.dt,
+        );
+      }
+      if (row.subId2) {
+        affiliateMapById2.set(
+          row.subId2,
+          (affiliateMapById2.get(row.subId2) || 0) + row.dt,
+        );
+      }
     }
 
     // Build shopee grouped map: CP = SUM(Số tiền đã chi tiêu) GROUP BY SubID
     const shopeeMap = new Map<
       string,
-      { campaignName: string; cp: number }
+      { campaignName: string; cp: number; joinColumn: 'sub_id1' | 'sub_id2' }
     >();
     for (const row of shopeeData) {
       const existing = shopeeMap.get(row.subId);
@@ -108,21 +205,38 @@ export class ImportService {
         shopeeMap.set(row.subId, {
           campaignName: row.campaignName,
           cp: row.cp,
+          joinColumn: row.joinColumn,
         });
       }
     }
 
-    // Join Shopee & Affiliate via SubID = Sub_id2
+    // Join Shopee & Affiliate: join column depends on campaign name format
+    // - Campaign có dấu '-': subId join với Sub_id2
+    // - Campaign không có dấu '-': subId join với Sub_id1
     const allSubIds = new Set([
       ...shopeeMap.keys(),
-      ...affiliateMap.keys(),
+      ...affiliateMapById1.keys(),
+      ...affiliateMapById2.keys(),
     ]);
 
     const records: any[] = [];
     for (const subId of allSubIds) {
       if (!subId) continue;
       const shopee = shopeeMap.get(subId);
-      const dt = affiliateMap.get(subId) || 0;
+
+      let dt = 0;
+      if (shopee) {
+        // Shopee row exists — use its joinColumn to pick the right affiliate map
+        dt =
+          shopee.joinColumn === 'sub_id1'
+            ? affiliateMapById1.get(subId) || 0
+            : affiliateMapById2.get(subId) || 0;
+      } else {
+        // No shopee row — check both affiliate maps, prefer sub_id2
+        dt = affiliateMapById2.get(subId) || affiliateMapById1.get(subId) || 0;
+        if (!dt) continue; // skip if no data from either side
+      }
+
       const campaignName = shopee?.campaignName || subId;
       if (!campaignName) continue;
       records.push({
@@ -203,8 +317,9 @@ export class ImportService {
       if (!campaignName) continue;
 
       const lastDashIdx = campaignName.lastIndexOf('-');
+      const hasDash = lastDashIdx >= 0;
       const subId = (
-        lastDashIdx >= 0
+        hasDash
           ? campaignName.substring(lastDashIdx + 1)
           : campaignName
       ).trim();
@@ -214,6 +329,7 @@ export class ImportService {
         subId,
         campaignName,
         cp: cpValue,
+        joinColumn: hasDash ? 'sub_id2' : 'sub_id1',
       });
     }
 
@@ -268,8 +384,9 @@ export class ImportService {
       if (!campaignName) continue;
 
       const lastDashIdx = campaignName.lastIndexOf('-');
+      const hasDash = lastDashIdx >= 0;
       const subId = (
-        lastDashIdx >= 0
+        hasDash
           ? campaignName.substring(lastDashIdx + 1)
           : campaignName
       ).trim();
@@ -279,6 +396,7 @@ export class ImportService {
         subId,
         campaignName,
         cp: cpValue,
+        joinColumn: hasDash ? 'sub_id2' : 'sub_id1',
       });
     }
 
@@ -287,7 +405,7 @@ export class ImportService {
 
   /**
    * Parse Affiliate data from an XLSX file.
-   * Same column logic as processCsv: "Sub_id2" and "Tổng hoa hồng đơn hàng".
+   * Reads both "Sub_id1" and "Sub_id2" columns, plus "Tổng hoa hồng đơn hàng".
    */
   private processAffiliateFromXlsx(buffer: Buffer): AffiliateRow[] {
     const workbook = XLSX.read(buffer, { type: 'buffer' });
@@ -309,7 +427,11 @@ export class ImportService {
 
     const headers = jsonData[0] as string[];
 
-    const subIdIdx = headers.findIndex(
+    const subId1Idx = headers.findIndex(
+      (h) =>
+        typeof h === 'string' && h.trim() === 'Sub_id1',
+    );
+    const subId2Idx = headers.findIndex(
       (h) =>
         typeof h === 'string' && h.trim() === 'Sub_id2',
     );
@@ -319,9 +441,9 @@ export class ImportService {
         h.trim().includes('Tổng hoa hồng đơn hàng'),
     );
 
-    if (subIdIdx === -1) {
+    if (subId1Idx === -1 && subId2Idx === -1) {
       throw new BadRequestException(
-        'XLSX file missing Sub_id2 column',
+        'XLSX file missing both Sub_id1 and Sub_id2 columns',
       );
     }
     if (dtIdx === -1) {
@@ -336,12 +458,13 @@ export class ImportService {
       const row = jsonData[i];
       if (!row) continue;
 
-      const subId = String(row[subIdIdx] || '').trim();
-      if (!subId) continue;
+      const subId1 = subId1Idx >= 0 ? String(row[subId1Idx] || '').trim() : '';
+      const subId2 = subId2Idx >= 0 ? String(row[subId2Idx] || '').trim() : '';
+      if (!subId1 && !subId2) continue;
 
       const dt = Number(row[dtIdx]) || 0;
 
-      results.push({ subId, dt });
+      results.push({ subId1, subId2, dt });
     }
 
     return results;
@@ -349,7 +472,7 @@ export class ImportService {
 
   /**
    * Parse Affiliate data from a CSV file.
-   * Looks for "Sub_id2" and "Tổng hoa hồng đơn hàng" columns.
+   * Reads both "Sub_id1" and "Sub_id2" columns, plus "Tổng hoa hồng đơn hàng".
    */
   private processCsv(buffer: Buffer): AffiliateRow[] {
     // Handle BOM
@@ -366,16 +489,19 @@ export class ImportService {
     const headerLine = lines[0]!;
     const headers = this.parseCsvLine(headerLine);
 
-    const subIdIdx = headers.findIndex(
+    const subId1Idx = headers.findIndex(
+      (h) => h.trim() === 'Sub_id1',
+    );
+    const subId2Idx = headers.findIndex(
       (h) => h.trim() === 'Sub_id2',
     );
     const dtIdx = headers.findIndex((h) =>
       h.trim().includes('Tổng hoa hồng đơn hàng'),
     );
 
-    if (subIdIdx === -1) {
+    if (subId1Idx === -1 && subId2Idx === -1) {
       throw new BadRequestException(
-        'CSV file missing Sub_id2 column',
+        'CSV file missing both Sub_id1 and Sub_id2 columns',
       );
     }
     if (dtIdx === -1) {
@@ -391,8 +517,9 @@ export class ImportService {
       if (!line || line.trim() === '') continue;
 
       const fields = this.parseCsvLine(line);
-      const subId = (fields[subIdIdx] || '').trim();
-      if (!subId) continue;
+      const subId1 = subId1Idx >= 0 ? (fields[subId1Idx] || '').trim() : '';
+      const subId2 = subId2Idx >= 0 ? (fields[subId2Idx] || '').trim() : '';
+      if (!subId1 && !subId2) continue;
 
       // Parse number: remove commas, quotes, spaces
       const rawDt = (fields[dtIdx] || '0')
@@ -400,7 +527,7 @@ export class ImportService {
         .trim();
       const dt = Number(rawDt) || 0;
 
-      results.push({ subId, dt });
+      results.push({ subId1, subId2, dt });
     }
 
     return results;

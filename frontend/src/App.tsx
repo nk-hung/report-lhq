@@ -4,11 +4,11 @@ import { ConfigProvider } from 'antd';
 import viVN from 'antd/locale/vi_VN';
 
 import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import ImportPage from './pages/ImportPage';
 import ReportPage from './pages/ReportPage';
 import SavedProductsPage from './pages/SavedProductsPage';
+import AdminUsersPage from './pages/AdminUsersPage';
 import AppLayout from './components/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -28,7 +28,6 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
             <Route
               element={
                 <ProtectedRoute>
@@ -40,6 +39,7 @@ function App() {
               <Route path="/import" element={<ImportPage />} />
               <Route path="/report" element={<ReportPage />} />
               <Route path="/saved-products" element={<SavedProductsPage />} />
+              <Route path="/admin/users" element={<AdminUsersPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

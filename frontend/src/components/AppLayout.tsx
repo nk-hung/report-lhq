@@ -9,8 +9,9 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
-import { useLogout } from '../hooks/useAuth';
+import { useLogout, isSuperAdmin, getUsername } from '../hooks/useAuth';
 
 const { Header, Sider, Content } = Layout;
 
@@ -41,6 +42,11 @@ export default function AppLayout() {
       icon: <SaveOutlined />,
       label: 'Sản phẩm đã lưu',
     },
+    ...(isSuperAdmin() ? [{
+      key: '/admin/users',
+      icon: <TeamOutlined />,
+      label: 'Quản lý user',
+    }] : []),
     {
       key: 'logout',
       icon: <LogoutOutlined />,
@@ -64,6 +70,7 @@ export default function AppLayout() {
         collapsible
         collapsed={collapsed}
         theme="dark"
+        style={{ minHeight: '100vh' }}
       >
         <div className="flex items-center justify-center h-16 text-white font-bold text-lg">
           {collapsed ? 'CR' : 'Camp Report'}
@@ -77,14 +84,15 @@ export default function AppLayout() {
         />
       </Sider>
       <Layout>
-        <Header className="bg-white px-4 flex items-center shadow-sm" style={{ padding: '0 16px' }}>
+        <Header className="px-4 flex items-center shadow-sm" style={{ padding: '0 16px', background: '#001529' }}>
           <span
-            className="cursor-pointer text-lg"
+            className="cursor-pointer text-lg text-white"
             onClick={() => setCollapsed(!collapsed)}
           >
             {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
           </span>
-          <span className="ml-4 font-semibold text-lg">Camp Report App</span>
+          <span className="ml-4 font-semibold text-lg text-white">Camp Report App</span>
+          <span className="ml-auto text-white text-sm opacity-75">{getUsername()}</span>
         </Header>
         <Content className="m-4 min-h-70">
           <div className="min-w-0 rounded-lg bg-white p-6">

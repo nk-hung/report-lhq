@@ -4,7 +4,9 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -12,6 +14,7 @@ import {
   ApiBearerAuth,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -28,13 +31,44 @@ export class SavedProductsController {
   @Post()
   @ApiOperation({ summary: 'Save a product for the logged-in user' })
   async saveProduct(@Req() req: any, @Body() dto: CreateSavedProductDto) {
-    return this.savedProductsService.saveProduct(req.user.userId, dto.subId2);
+    return this.savedProductsService.saveProduct(
+      req.user.userId,
+      dto.subId2,
+      dto.folderId,
+    );
   }
 
   @Get()
   @ApiOperation({ summary: 'Get saved products for the logged-in user' })
-  async getSavedProducts(@Req() req: any) {
-    return this.savedProductsService.getSavedProducts(req.user.userId);
+  @ApiQuery({
+    name: 'folderId',
+    required: false,
+    description:
+      'Filter by folder ID. Use "uncategorized" for products without a folder.',
+  })
+  async getSavedProducts(
+    @Req() req: any,
+    @Query('folderId') folderId?: string,
+  ) {
+    return this.savedProductsService.getSavedProducts(
+      req.user.userId,
+      folderId,
+    );
+  }
+
+  @Patch(':subId2/move')
+  @ApiOperation({ summary: 'Move a saved product to a different folder' })
+  @ApiParam({ name: 'subId2', example: 'DXYTuiXinh2101' })
+  async moveProduct(
+    @Req() req: any,
+    @Param('subId2') subId2: string,
+    @Body() body: { folderId: string | null },
+  ) {
+    return this.savedProductsService.moveProduct(
+      req.user.userId,
+      subId2,
+      body.folderId,
+    );
   }
 
   @Delete(':subId2')

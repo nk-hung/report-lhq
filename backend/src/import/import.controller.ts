@@ -1,6 +1,9 @@
 import {
   Controller,
   Post,
+  Get,
+  Delete,
+  Param,
   UseGuards,
   UseInterceptors,
   UploadedFiles,
@@ -52,5 +55,19 @@ export class ImportController {
       dto.importDate,
       req.user.userId,
     );
+  }
+
+  @Get('sessions')
+  @ApiOperation({ summary: 'Get all import sessions for the current user' })
+  async getSessions(@Req() req: any) {
+    return this.importService.getSessions(req.user.userId);
+  }
+
+  @Delete('sessions/:id')
+  @ApiOperation({
+    summary: 'Delete an import session and its records, recalculate importOrder',
+  })
+  async deleteSession(@Param('id') id: string, @Req() req: any) {
+    return this.importService.deleteSession(id, req.user.userId);
   }
 }

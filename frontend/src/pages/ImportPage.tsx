@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Button, Typography, message, Card, Upload } from 'antd';
+import { Button, Typography, message, Card, Upload, Table, Popconfirm } from 'antd';
 import type { UploadFile, UploadProps } from 'antd';
-import { InboxOutlined } from '@ant-design/icons';
+import { InboxOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import { useImportSessions } from '../hooks/useImportSessions';
+import type { ImportSession } from '../types';
 
 const { Title } = Typography;
 const { Dragger } = Upload;
@@ -13,6 +15,7 @@ export default function ImportPage() {
   const [affiliateFile, setAffiliateFile] = useState<UploadFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
+  const { sessions, isLoading: sessionsLoading, deleteSession, isDeleting } = useImportSessions();
 
   const handleUpload = async () => {
     if (shopeeFile.length === 0 || affiliateFile.length === 0) {
@@ -39,6 +42,56 @@ export default function ImportPage() {
       setUploading(false);
     }
   };
+
+  const handleDelete = async (sessionId: string) => {
+    try {
+      await deleteSession(sessionId);
+      message.success('Đã xóa dữ liệu thành công!');
+    } catch {
+      message.error('Xóa thất bại. Vui lòng thử lại.');
+    }
+  };
+
+  const sessionColumns = [
+    {
+      title: 'Ngày import',
+      dataIndex: 'importDate',
+      key: 'importDate',
+      render: (val: string) => new Date(val).toLocaleDateString('vi-VN'),
+    },
+    {
+      title: 'Lần thứ',
+      dataIndex: 'importOrder',
+      key: 'importOrder',
+    },
+    {
+      title: 'Số bản ghi',
+      dataIndex: 'recordCount',
+      key: 'recordCount',
+    },
+    {
+      title: '',
+      key: 'action',
+      width: 80,
+      render: (_: unknown, record: ImportSession) => (
+        <Popconfirm
+          title="Xóa dữ liệu ngày này?"
+          description={`Sẽ xóa ${record.recordCount} bản ghi của ngày ${new Date(record.importDate).toLocaleDateString('vi-VN')}`}
+          onConfirm={() => void handleDelete(record._id)}
+          okText="Xóa"
+          cancelText="Hủy"
+          okButtonProps={{ danger: true }}
+        >
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            disabled={isDeleting}
+          />
+        </Popconfirm>
+      ),
+    },
+  ];
 
   return (
     <div>
@@ -92,6 +145,19 @@ export default function ImportPage() {
           Upload & Xử lý
         </Button>
       </div>
+
+      {sessions.length > 0 && (
+        <Card title="Lịch sử import" className="mt-8">
+          <Table
+            dataSource={sessions}
+            columns={sessionColumns}
+            rowKey="_id"
+            loading={sessionsLoading}
+            pagination={false}
+            size="small"
+          />
+        </Card>
+      )}
     </div>
   );
 }

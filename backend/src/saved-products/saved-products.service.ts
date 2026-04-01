@@ -13,7 +13,11 @@ export class SavedProductsService {
     private readonly savedProductModel: Model<SavedProductDocument>,
   ) {}
 
-  async saveProduct(userId: string, subId2: string) {
+  async saveProduct(userId: string, subId2: string, folderId?: string) {
+    const folderObjectId = folderId
+      ? new Types.ObjectId(folderId)
+      : null;
+
     const savedProduct = await this.savedProductModel
       .findOneAndUpdate(
         {
@@ -24,6 +28,7 @@ export class SavedProductsService {
           $setOnInsert: {
             userId: new Types.ObjectId(userId),
             subId2,
+            folderId: folderObjectId,
           },
         },
         {
@@ -37,11 +42,46 @@ export class SavedProductsService {
     return savedProduct;
   }
 
-  async getSavedProducts(userId: string) {
+  async getSavedProducts(userId: string, folderId?: string) {
+    const filter: Record<string, any> = {
+      userId: new Types.ObjectId(userId),
+    };
+
+    if (folderId === 'uncategorized' || folderId === 'null') {
+      filter.folderId = null;
+    } else if (folderId) {
+      filter.folderId = new Types.ObjectId(folderId);
+    }
+
     return this.savedProductModel
-      .find({ userId: new Types.ObjectId(userId) })
+      .find(filter)
       .sort({ createdAt: -1, subId2: 1 })
       .lean();
+  }
+
+  async moveProduct(userId: string, subId2: string, folderId: string | null) {
+    return this.savedProductModel
+      .findOneAndUpdate(
+        {
+          userId: new Types.ObjectId(userId),
+          subId2,
+        },
+        {
+          folderId: folderId ? new Types.ObjectId(folderId) : null,
+        },
+        { new: true },
+      )
+      .lean();
+  }
+
+  async clearFolderProducts(userId: string, folderId: string) {
+    return this.savedProductModel.updateMany(
+      {
+        userId: new Types.ObjectId(userId),
+        folderId: new Types.ObjectId(folderId),
+      },
+      { folderId: null },
+    );
   }
 
   async removeSavedProduct(userId: string, subId2: string) {

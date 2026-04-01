@@ -2,79 +2,289 @@
 
 ## Stack
 
-- Backend: NestJS + TypeScript, port 3000, MongoDB
-- Frontend: React 18 + Vite + TypeScript, poPRIORITY_LEVELSrt 5173
-- UI: AntDesign + Tailwind CSS + TanStack Query
+- Backend: NestJS 11 + TypeScript, port 3000, MongoDB (Mongoose 9)
+- Frontend: React 19 + Vite 8 + TypeScript, port 5173
+- UI: AntDesign 6 + Tailwind CSS 4 + TanStack Query 5
+- Auth: JWT (passport-jwt) + bcrypt, token expiry 7 ngày
+- File parsing: xlsx, csv-parser, multer
 
 ## Cấu trúc thư mục
 
+```
 camp-report-app/
-├── backend/ ← NestJS (backend-teammate sở hữu)
-├── frontend/ ← React (frontend-teammate sở hữu)
-├── samples/ ← File mẫu để đọc cấu trúc cột
+├── backend/          ← NestJS (backend-teammate sở hữu)
+│   └── src/
+│       ├── main.ts
+│       ├── app.module.ts
+│       ├── auth/           ← Auth module (register, login, JWT)
+│       │   ├── auth.controller.ts
+│       │   ├── auth.service.ts
+│       │   ├── dto/        (register.dto.ts, login.dto.ts)
+│       │   ├── schemas/    (user.schema.ts)
+│       │   └── strategies/ (jwt.strategy.ts, local.strategy.ts)
+│       ├── import/         ← Import module (file upload & processing)
+│       │   ├── import.controller.ts
+│       │   ├── import.service.ts
+│       │   ├── dto/        (upload-import.dto.ts)
+│       │   └── schemas/    (import-session.schema.ts, import-record.schema.ts)
+│       ├── report/         ← Report module (aggregation & compare)
+│       │   ├── report.controller.ts
+│       │   ├── report.service.ts
+│       │   └── report.module.ts
+│       ├── saved-products/ ← Saved Products module (bookmark mã hàng hóa)
+│       │   ├── saved-products.controller.ts
+│       │   ├── saved-products.service.ts
+│       │   ├── saved-products.module.ts
+│       │   ├── dto/        (create-saved-product.dto.ts)
+│       │   └── schemas/    (saved-product.schema.ts)
+│       ├── product-folders/ ← Product Folders module (phân loại sản phẩm vào folder)
+│       │   ├── product-folders.controller.ts
+│       │   ├── product-folders.service.ts
+│       │   ├── product-folders.module.ts
+│       │   ├── dto/        (create-folder.dto.ts, update-folder.dto.ts)
+│       │   └── schemas/    (product-folder.schema.ts)
+│       ├── user-preferences/ ← User Preferences module (highlight state)
+│       │   ├── user-preferences.controller.ts
+│       │   ├── user-preferences.service.ts
+│       │   ├── user-preferences.module.ts
+│       │   ├── dto/        (update-highlighted-sub-ids.dto.ts)
+│       │   └── schemas/    (user-preference.schema.ts)
+│       └── common/
+│           ├── guards/        (jwt-auth.guard.ts, roles.guard.ts)
+│           ├── decorators/    (roles.decorator.ts)
+│           ├── interceptors/  (response.interceptor.ts)
+│           └── middleware/     (request-logger.middleware.ts)
+├── frontend/         ← React (frontend-teammate sở hữu)
+│   └── src/
+│       ├── main.tsx, App.tsx, index.css
+│       ├── api/         (axios.ts – interceptor auto-attach token)
+│       ├── components/  (AppLayout.tsx, ProtectedRoute.tsx, SavedProductsPanel.tsx, SaveFolderModal.tsx)
+│       ├── hooks/       (useAuth.ts, useReport.ts, useHighlight.ts, useSavedProducts.ts, useProductFolders.ts, useImportSessions.ts)
+│       ├── pages/       (LoginPage, DashboardPage, ImportPage, ReportPage, SavedProductsPage, AdminUsersPage)
+│       └── types/       (index.ts)
+├── samples/          ← File mẫu để đọc cấu trúc cột
 └── CLAUDE.md
+```
 
 ## Domain Logic – ĐỌC KỸ
 
-### File Hộ Kinh Doanh (.xlsx)
+### File Hộ Kinh Doanh (.xlsx hoặc .csv)
 
+- Cột cần: `Tên chiến dịch`, `Số tiền đã chi tiêu (VND)`
 - Lọc các dòng có `Số tiền đã chi tiêu (VND)` > 0
-- Sub ID = phần CUỐI của `Tên chiến dịch` sau dấu `-` cuối cùng
+- Nếu `Tên chiến dịch` có dấu `-`: Sub ID = phần CUỐI sau dấu `-` cuối cùng
   - VD: "17396120189-SHPAAP0725-DXYTuiXinh2101" → Sub ID = "DXYTuiXinh2101"
-- CP = giá trị `Số tiền đã chi tiêu (VND)`
+- Nếu `Tên chiến dịch` KHÔNG có dấu `-`: Sub ID = toàn bộ Tên chiến dịch
+  - VD: "DXYTuiXinh2101" → Sub ID = "DXYTuiXinh2101"
+- CP = giá trị `Số tiền đã chi tiêu (VND)`, group by Sub ID
 
-### File AffiliateCommissionReport (.csv)
+### File AffiliateCommissionReport (.csv hoặc .xlsx)
 
-- DT = tổng `Tổng hoa hồng đơn hàng(₫)` GROUP BY `Sub_id2`
-- Join với Shopee qua Sub ID = Sub_id2
+- Cột cần: `Sub_id1`, `Sub_id2`, `Tổng hoa hồng đơn hàng(₫)`
+- DT = tổng `Tổng hoa hồng đơn hàng(₫)` GROUP BY `Sub_id1` / `Sub_id2`
+- Join với Shopee tùy thuộc format Tên chiến dịch:
+  - Tên chiến dịch có dấu `-` → Sub ID join với cột `Sub_id2`
+  - Tên chiến dịch KHÔNG có dấu `-` → Sub ID join với cột `Sub_id1`
 
 ### Công thức
 
-- Hiệu quả % = (DT / CP) × 100
+- Hiệu quả % (HQ) = (DT / CP) × 100
+- Tổng lợi nhuận (TLN) = TDT - TCP
 - Mỗi campaign theo dõi tối đa 10 ngày liên tiếp
 - Ngày 11+ → campaign xuống hàng phía ngay dưới
 
-## API Contract (backend → frontend)
+## MongoDB Schemas
 
-POST /api/import { dayNumber, records: [{subId, campaignName, cp, dt}] }
-GET /api/campaigns → danh sách campaign + tất cả day records
-DELETE /api/reset → xóa toàn bộ
-GET /api/docs → Swagger UI
+### User
+```
+{ username (unique), password (bcrypt), role ('superadmin' | 'user', default 'user'), createdAt, updatedAt }
+```
+- Super admin được seed tự động khi khởi động (admin/admin123) nếu chưa có
+- Chỉ superadmin mới tạo được user mới
+
+### ImportSession
+```
+{ importDate, importOrder, userId (ref User), createdAt, updatedAt }
+```
+
+### ImportRecord
+```
+{ sessionId (ref ImportSession), subId, campaignName, cp, dt, importDate, importOrder, userId (ref User), createdAt, updatedAt }
+```
+
+### SavedProduct
+```
+{ userId (ref User), subId2, folderId (ref ProductFolder, nullable), createdAt, updatedAt }
+Unique index: { userId, subId2 }
+```
+
+### ProductFolder
+```
+{ userId (ref User), name, createdAt, updatedAt }
+Unique index: { userId, name }
+```
+
+### UserPreference
+```
+{ userId (ref User, unique), highlightedSubIds: string[], updatedAt }
+```
+
+## API Endpoints (tất cả prefix `/api`)
+
+### Auth – `/auth`
+
+| Method | Route              | Mô tả                        | Body / Auth                 |
+|--------|--------------------|-------------------------------|-----------------------------|
+| POST   | `/auth/login`      | Đăng nhập, trả JWT + role    | { username, password }      |
+| POST   | `/auth/register`   | Tạo user (superadmin only)   | { username, password } + JWT |
+| GET    | `/auth/users`      | Danh sách users (superadmin) | JWT                         |
+| DELETE | `/auth/users/:id`  | Xóa user (superadmin only)   | JWT                         |
+
+### Import – `/import` (cần JWT)
+
+| Method | Route              | Mô tả                        | Body                        |
+|--------|--------------------|-------------------------------|-----------------------------|
+| POST   | `/import/upload`   | Upload 2 file (multipart)    | shopeeFile, affiliateFile, importDate? |
+| GET    | `/import/sessions` | Lấy danh sách import sessions | –                           |
+| DELETE | `/import/sessions/:id` | Xóa session + records, recalculate importOrder | –        |
+
+Response upload: `{ sessionId, importDate, importOrder, recordCount }`
+Response sessions: `[{ _id, importDate, importOrder, recordCount }]`
+
+### Report – `/report` (cần JWT)
+
+| Method | Route              | Mô tả                        | Params                      |
+|--------|--------------------|-------------------------------|-----------------------------|
+| GET    | `/report/total`    | Lũy kế tổng CP, DT, Profit  | –                           |
+| GET    | `/report/expend`   | Chi tiêu group by SubID     | –                           |
+| GET    | `/report/revenue`  | Doanh thu group by SubID    | –                           |
+| GET    | `/report/compare`  | So sánh theo session + phân trang | ?sessionId (optional)  |
+
+**Compare response:**
+```json
+{
+  "records": [{ "subId", "tcp", "tdt", "tln", "days": [{ "day", "cp", "dt", "hq" }] }],
+  "total": number,
+  "maxDays": number,
+  "currentSessionId", "prevSessionId", "nextSessionId", "oldestSessionId"
+}
+```
+
+### Saved Products – `/saved-products` (cần JWT)
+
+| Method | Route                          | Mô tả                                    | Body / Params                     |
+|--------|--------------------------------|-------------------------------------------|-----------------------------------|
+| POST   | `/saved-products`              | Lưu mã hàng hóa (vào folder nếu có)     | { subId2, folderId? }             |
+| GET    | `/saved-products`              | Lấy danh sách mã đã lưu                  | ?folderId (optional, "uncategorized" cho chưa phân loại) |
+| PATCH  | `/saved-products/:subId2/move` | Di chuyển sản phẩm sang folder khác      | { folderId: string \| null }      |
+| DELETE | `/saved-products/:subId2`      | Xóa mã hàng hóa đã lưu                  | –                                 |
+
+### Product Folders – `/product-folders` (cần JWT)
+
+| Method | Route                  | Mô tả                                           | Body          |
+|--------|------------------------|--------------------------------------------------|---------------|
+| POST   | `/product-folders`     | Tạo folder mới                                   | { name }      |
+| GET    | `/product-folders`     | Lấy danh sách folder của user                    | –             |
+| PATCH  | `/product-folders/:id` | Đổi tên folder                                   | { name }      |
+| DELETE | `/product-folders/:id` | Xóa folder (sản phẩm chuyển về chưa phân loại)  | –             |
+
+### User Preferences – `/user/preferences` (cần JWT)
+
+| Method | Route                                | Mô tả                          | Body                          |
+|--------|--------------------------------------|---------------------------------|-------------------------------|
+| GET    | `/user/preferences`                  | Lấy danh sách highlight        | –                             |
+| POST   | `/user/preferences/highlight`        | Upsert danh sách highlight     | { highlightedSubIds: string[] } |
+| DELETE | `/user/preferences/highlight/:subId2`| Xóa highlight 1 mã             | –                             |
+
+### Reset – `/reset` (cần JWT)
+
+| Method | Route    | Mô tả           |
+|--------|----------|------------------|
+| DELETE  | `/reset` | Xóa toàn bộ data của user |
+
+### Swagger: `/api/docs`
 
 ## Response format
 
-{ "data": ..., "message": "...", "statusCode": 200 }
+```json
+{ "data": ..., "message": "Success", "statusCode": 200 }
+```
+
+## Frontend Routes
+
+| Route              | Page               | Auth | Mô tả                                           |
+|--------------------|--------------------|------|--------------------------------------------------|
+| `/login`           | LoginPage          | No   | Đăng nhập                                        |
+| `/dashboard`       | DashboardPage      | Yes  | KPI cards: TCP, TDT, TLN                        |
+| `/import`          | ImportPage         | Yes  | Upload 2 file + lịch sử import (xóa theo ngày) |
+| `/report`          | ReportPage         | Yes  | Bảng so sánh với navigation session + highlight + lưu vào folder |
+| `/saved-products`  | SavedProductsPage  | Yes  | Tabs folder: Tất cả / Chưa phân loại / Folder tùy chỉnh |
+| `/admin/users`     | AdminUsersPage     | Yes (superadmin) | Quản lý tài khoản user                  |
+
+## Chức năng chi tiết
+
+### 1. Authentication & User Management
+- Đăng nhập với JWT, token lưu localStorage (kèm role + username)
+- Super admin (admin/admin123) được seed tự động khi backend khởi động
+- Chỉ superadmin mới tạo/xóa user (trang /admin/users)
+- Không có trang đăng ký công khai
+- Auto-attach token qua Axios interceptor
+- 401 → redirect /login
+
+### 2. Import file
+- Upload 2 file: Hộ Kinh Doanh (.xlsx/.csv) + Affiliate (.csv/.xlsx)
+- Auto-detect file format (extension + MIME type)
+- Parse, join qua Sub ID, lưu ImportSession + ImportRecord
+- Lịch sử import: hiển thị danh sách sessions đã import (ngày, lần thứ, số bản ghi)
+- Xóa theo ngày: xóa session + records, tự động tính lại importOrder
+
+### 3. Dashboard
+- 3 KPI cards: Tổng Chi Phí (TCP), Tổng Doanh Thu (TDT), Tổng Lợi Nhuận (TLN)
+- Format VND, responsive grid
+
+### 4. Báo cáo So sánh (Report) – Core Feature
+- Bảng động với cột Sub ID + Hiệu quả (TCP, TDT, TLN) + tối đa 10 cột ngày (CP, DT, HQ%)
+- Row merging cho cùng SubID
+- Sub ID dài → ellipsis (max 300px) + tooltip hiện full text
+- TCP, TDT, TLN: background xanh nhạt + chữ đậm; TLN xanh/đỏ theo dương/âm
+- HQ% > 200%: chữ xanh
+- Sort tăng/giảm trên tất cả cột số (TCP, TDT, TLN, CP, DT, HQ%) – giữ nguyên nhóm SubID khi sort
+- Navigation session: Mới nhất / Mới hơn / Cũ hơn / Cũ nhất
+- Fixed columns + horizontal scroll, table height cố định (100vh - 280px)
+
+### 5. Highlight mã hàng hóa
+- Click Sub ID → toggle highlight (đổi màu dòng)
+- Persist trên backend (user_preferences), sync qua API
+- Badge hiển thị số mã đang highlight + nút Clear
+- Reload / login lại → highlight giữ nguyên
+
+### 6. Lưu mã hàng hóa (Saved Products)
+- Nút "Lưu" ở ReportPage → mở Modal chọn folder
+- Có thể lưu không phân loại hoặc chọn folder
+- Tạo folder mới ngay trong modal
+- Nút "Bỏ lưu" xóa trực tiếp
+
+### 7. Product Folders (Phân loại sản phẩm vào folder)
+- Trang SavedProductsPage hiển thị Tabs ngang: Tất cả / Chưa phân loại / Folder tùy chỉnh
+- CRUD folder: tạo, đổi tên, xóa (cascade → sản phẩm về "Chưa phân loại")
+- Di chuyển sản phẩm giữa các folder (nút "Chuyển" + dropdown)
+- Click sản phẩm → auto highlight + navigate /report
+- Badge đếm số lượng sản phẩm mỗi folder/tab
+
+### 8. Reset data
+- DELETE /reset xóa toàn bộ import data
+- Highlight & saved products KHÔNG bị ảnh hưởng
+
+## Cấu hình
+
+- MongoDB: `mongodb://mongoadmin:secret@localhost:27017/camp-report?authSource=admin`
+- JWT Secret: `camp-report-secret-key`
+- CORS: `origin: '*'`
+- Vite proxy: `/api` → `http://localhost:3000`
+- Locale: Vietnamese (vi_VN)
 
 ## File ownership – QUAN TRỌNG
 
 - backend-teammate: CHỈ viết vào backend/
 - frontend-teammate: CHỈ viết vào frontend/
 - KHÔNG ai được sửa file của người kia
-
-## Agent 1: backend-teammate
-
-#### 1. Thêm API endpoint GET `/report/total`
-
-- Endpoint này có nhiệm vụ tính lũy kế tổng số tiền đã chi và lũy kế tổng hoa hồng đơn hàng của từng lần import file excel
-
-#### 2. Thêm API endpoint GET `/report/expend`
-
-- Endpoint này có nhiệm vụ xử lý file Hộ Kinh Doanh -> tính toán số tiền đã chi
-
-#### 3. Thêm API endpoint GET `/report/revuene`
-
-- Endpoint này có nhiệm vụ xử lý file affiliate -> tính toán số tiền hoa hồng nhận được
-
-#### 4. API: /report/compare
-
-- Endpoint này có nhiệm vụ show các thông tin tổng thu, hoa hồng của một loại hàng hóa trong file vừa import lên với các field: tổng chi phí (TCP), tổng doanh thu(TDT), tổng lợi nhuận = (TDT-TCP), chi phí (CP), doanh thu(DT), hiệu quả (HQ=DT/CP). Nếu mã hàng hóa đấy có doanh thu ở những ngày import trước đó thì lấy thêm vào danh sách {CP, DT, HQ}
-- Endpoint này có dạng hiển thị pagination nếu user click > hoặc < thì sẽ là thông tin của ngày import trước đó với logic như trên
-
-#### Sẽ có chức năng đăng nhập
-
-## Agent 2: frontend-teammate
-
-- Sẽ có chức năng đăng nhập
-- Sau khi đăng nhập xong thì sẽ vào màn dashboard hiển thị Tổng chi phí và tổng doanh thu thông qua api: /report/total
-- Màn import sẽ có 2 ô import 2 file
-- Mà Report: Sẽ hiển thị thông tin mã đơn hàng có danh thu bao nhiêu và doanh thu của các lần import trước đó nếu có. Hình ảnh minh họa ở /home/kyhung/Personal/camp-report-app/samples/Screenshot from 2026-03-27 08-40-52.png
