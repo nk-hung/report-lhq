@@ -1,12 +1,10 @@
+import { Controller, Get, Delete, UseGuards, Req, Query } from '@nestjs/common';
 import {
-  Controller,
-  Get,
-  Delete,
-  UseGuards,
-  Req,
-  Query,
-} from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { ReportService } from './report.service';
 
@@ -44,13 +42,30 @@ export class ReportController {
   @Get('compare')
   @ApiOperation({
     summary:
-      'Get comparison report with TCP, TDT, TLN and daily breakdown. Use sessionId to paginate between import sessions.',
+      'Get comparison report with TCP, TDT, TLN and daily breakdown. Use sessionId to paginate between import sessions and campaignName to filter subIds by current session campaign name.',
+  })
+  @ApiQuery({
+    name: 'sessionId',
+    required: false,
+    description:
+      'Optional import session id. If invalid or not found for the user, the latest session is used.',
+  })
+  @ApiQuery({
+    name: 'campaignName',
+    required: false,
+    description:
+      'Optional campaign name keyword for case-insensitive contains filtering on current session records',
   })
   async getCompare(
     @Req() req: any,
     @Query('sessionId') sessionId?: string,
+    @Query('campaignName') campaignName?: string,
   ) {
-    return this.reportService.getCompare(req.user.userId, sessionId);
+    return this.reportService.getCompare(
+      req.user.userId,
+      sessionId,
+      campaignName,
+    );
   }
 }
 

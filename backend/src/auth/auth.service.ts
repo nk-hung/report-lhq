@@ -40,18 +40,24 @@ export class AuthService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    const superadmin = await this.userModel.findOne({ role: 'superadmin' });
-    if (!superadmin) {
-      const password = this.generateStrongPassword();
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const user = new this.userModel({
-        username: 'admin',
-        password: hashedPassword,
-        role: 'superadmin',
-      });
-      await user.save();
-      console.log(`Superadmin seeded: username=admin, password=${password}`);
+    const superadmin = await this.userModel.findOne({
+      $or: [{ role: 'superadmin' }, { username: 'admin' }],
+    });
+
+    // Super admin already exists, skip seed.
+    if (superadmin) {
+      return;
     }
+
+    const password = this.generateStrongPassword();
+    const hashedPassword = await bcrypt.hash('Aa1234567@', 10);
+    const user = new this.userModel({
+      username: 'admin',
+      password: hashedPassword,
+      role: 'superadmin',
+    });
+    await user.save();
+    console.log(`Superadmin seeded: username=admin, password=${password}`);
   }
 
   async register(registerDto: RegisterDto) {

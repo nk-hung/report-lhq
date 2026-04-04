@@ -15,5 +15,7 @@ export class ImportSession {
   userId!: Types.ObjectId;
 }
 
-export const ImportSessionSchema =
-  SchemaFactory.createForClass(ImportSession);
+export const ImportSessionSchema = SchemaFactory.createForClass(ImportSession);
+
+ImportSessionSchema.index({ userId: 1, importOrder: 1 });
+ImportSessionSchema.index({ userId: 1, importDate: -1, importOrder: -1 });

@@ -9,7 +9,10 @@ export class CreateSavedProductDto {
   @Transform(({ value }) => String(value).trim())
   subId2!: string;
 
-  @ApiPropertyOptional({ example: '507f1f77bcf86cd799439011', description: 'Folder ID to categorize the product' })
+  @ApiPropertyOptional({
+    example: '507f1f77bcf86cd799439011',
+    description: 'Folder ID to categorize the product',
+  })
   @IsOptional()
   @IsString()
   folderId?: string;

@@ -65,7 +65,8 @@ export class ImportController {
 
   @Delete('sessions/:id')
   @ApiOperation({
-    summary: 'Delete an import session and its records, recalculate importOrder',
+    summary:
+      'Delete an import session and its records, recalculate importOrder',
   })
   async deleteSession(@Param('id') id: string, @Req() req: any) {
     return this.importService.deleteSession(id, req.user.userId);

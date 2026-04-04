@@ -1,10 +1,19 @@
 import { useState } from 'react';
-import { Table, Button, Modal, Form, Input, Typography, Popconfirm, Tag } from 'antd';
-import { UserAddOutlined, DeleteOutlined, LockOutlined, UserOutlined, KeyOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Typography, Popconfirm, Tag, Card, Space } from 'antd';
+import {
+  UserAddOutlined,
+  DeleteOutlined,
+  LockOutlined,
+  UserOutlined,
+  KeyOutlined,
+  TeamOutlined,
+  CrownOutlined,
+  SafetyCertificateOutlined,
+} from '@ant-design/icons';
 import { useUsers, useCreateUser, useDeleteUser } from '../hooks/useAuth';
 import type { UserInfo } from '../types';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 export default function AdminUsersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -12,6 +21,9 @@ export default function AdminUsersPage() {
   const { data: users, isLoading } = useUsers();
   const createUserMutation = useCreateUser();
   const deleteUserMutation = useDeleteUser();
+  const userList = users ?? [];
+  const superAdminCount = userList.filter((user) => user.role === 'superadmin').length;
+  const normalUserCount = userList.filter((user) => user.role !== 'superadmin').length;
 
   const generatePassword = () => {
     const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -94,31 +106,62 @@ export default function AdminUsersPage() {
   ];
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <Title level={4} className="!mb-0">Quản lý tài khoản</Title>
+    <div className="admin-users-page">
+      <div className="admin-users-hero mb-4">
+        <div>
+          <Text className="admin-users-eyebrow">User Administration</Text>
+          <Title level={3} style={{ margin: '6px 0 4px' }}>Quản lý tài khoản</Title>
+          <Text type="secondary">Tạo, kiểm soát và bảo vệ tài khoản người dùng trong hệ thống báo cáo.</Text>
+        </div>
         <Button
           type="primary"
           icon={<UserAddOutlined />}
           onClick={() => setIsModalOpen(true)}
+          className="admin-users-cta"
         >
           Tạo tài khoản
         </Button>
       </div>
 
-      <Table
-        columns={columns}
-        dataSource={users}
-        loading={isLoading}
-        rowKey="_id"
-        pagination={false}
-      />
+      <div className="admin-users-stats-grid mb-4">
+        <Card className="admin-users-stat-card" variant="borderless">
+          <Text type="secondary">Tổng tài khoản</Text>
+          <div className="admin-users-stat-value"><TeamOutlined /> {userList.length}</div>
+          <Text className="admin-users-stat-caption">Tất cả user trong hệ thống</Text>
+        </Card>
+        <Card className="admin-users-stat-card" variant="borderless">
+          <Text type="secondary">Super Admin</Text>
+          <div className="admin-users-stat-value"><CrownOutlined /> {superAdminCount}</div>
+          <Text className="admin-users-stat-caption">Tài khoản có quyền cao nhất</Text>
+        </Card>
+        <Card className="admin-users-stat-card" variant="borderless">
+          <Text type="secondary">Người dùng thường</Text>
+          <div className="admin-users-stat-value"><SafetyCertificateOutlined /> {normalUserCount}</div>
+          <Text className="admin-users-stat-caption">Có thể đăng nhập và sử dụng tính năng</Text>
+        </Card>
+      </div>
+
+      <div className="admin-users-table-wrap">
+        <div className="admin-users-table-head">
+          <Title level={5} style={{ margin: 0 }}>Danh sách tài khoản</Title>
+          <Tag color="blue">{userList.length} user</Tag>
+        </div>
+        <Table
+          columns={columns}
+          dataSource={userList}
+          loading={isLoading}
+          rowKey="_id"
+          pagination={false}
+          className="admin-users-table"
+        />
+      </div>
 
       <Modal
         title="Tạo tài khoản mới"
         open={isModalOpen}
         onCancel={() => { setIsModalOpen(false); form.resetFields(); }}
         footer={null}
+        className="admin-users-modal"
       >
         <Form
           form={form}
@@ -157,13 +200,17 @@ export default function AdminUsersPage() {
           >
             <Input prefix={<LockOutlined />} placeholder="Mật khẩu" />
           </Form.Item>
-          <Form.Item className="mb-0 text-right">
-            <Button onClick={() => { setIsModalOpen(false); form.resetFields(); }} className="mr-2">
-              Hủy
-            </Button>
-            <Button type="primary" htmlType="submit" loading={createUserMutation.isPending}>
-              Tạo
-            </Button>
+          <Form.Item className="mb-0">
+            <div className="admin-users-modal-actions">
+              <Space>
+                <Button onClick={() => { setIsModalOpen(false); form.resetFields(); }}>
+                  Hủy
+                </Button>
+                <Button type="primary" htmlType="submit" loading={createUserMutation.isPending}>
+                  Tạo tài khoản
+                </Button>
+              </Space>
+            </div>
           </Form.Item>
         </Form>
       </Modal>

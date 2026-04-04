@@ -74,10 +74,7 @@ export class SavedProductsController {
   @Delete(':subId2')
   @ApiOperation({ summary: 'Remove a saved product for the logged-in user' })
   @ApiParam({ name: 'subId2', example: 'DXYTuiXinh2101' })
-  async removeSavedProduct(
-    @Req() req: any,
-    @Param('subId2') subId2: string,
-  ) {
+  async removeSavedProduct(@Req() req: any, @Param('subId2') subId2: string) {
     return this.savedProductsService.removeSavedProduct(
       req.user.userId,
       subId2,

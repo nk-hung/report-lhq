@@ -1,10 +1,11 @@
+import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../api/axios';
-import { isAuthenticated } from './useAuth';
+import { getUsername, isAuthenticated } from './useAuth';
 import type { ApiResponse, SavedProduct } from '../types';
 
-const savedProductsQueryKey = ['saved-products'] as const;
+const getSavedProductsQueryKey = (username: string) => ['saved-products', username] as const;
 
 function normalizeSavedProducts(payload: unknown): SavedProduct[] {
   if (!Array.isArray(payload)) {
@@ -45,6 +46,8 @@ function normalizeSavedProducts(payload: unknown): SavedProduct[] {
 
 export function useSavedProducts() {
   const queryClient = useQueryClient();
+  const username = getUsername() || 'anonymous';
+  const savedProductsQueryKey = getSavedProductsQueryKey(username);
 
   const query = useQuery({
     queryKey: savedProductsQueryKey,
@@ -110,7 +113,10 @@ export function useSavedProducts() {
   });
 
   const savedProducts = query.data ?? [];
-  const savedProductSet = new Set(savedProducts.map((item) => item.subId2));
+  const savedProductSet = useMemo(
+    () => new Set(savedProducts.map((item) => item.subId2)),
+    [savedProducts],
+  );
 
   const moveProductMutation = useMutation({
     mutationFn: async ({ subId2, folderId }: { subId2: string; folderId: string | null }) => {

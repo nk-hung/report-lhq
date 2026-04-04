@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../api/axios';
-import { isAuthenticated } from './useAuth';
+import { getUsername, isAuthenticated } from './useAuth';
 import type { ApiResponse, UserPreferences } from '../types';
 
-const highlightQueryKey = ['user', 'preferences'] as const;
+const getHighlightQueryKey = (username: string) =>
+  ['user', 'preferences', username] as const;
 
 function normalizeHighlightedSubId2s(payload: unknown): string[] {
   if (!payload || typeof payload !== 'object') {
@@ -42,6 +43,8 @@ async function fetchPreferences() {
 export function useHighlight() {
   const queryClient = useQueryClient();
   const [isSyncing, setIsSyncing] = useState(false);
+  const username = getUsername() || 'anonymous';
+  const highlightQueryKey = getHighlightQueryKey(username);
 
   const query = useQuery({
     queryKey: highlightQueryKey,
@@ -88,7 +91,7 @@ export function useHighlight() {
   });
 
   const highlightedSubId2s = query.data?.highlightedSubId2s ?? [];
-  const highlightedSet = new Set(highlightedSubId2s);
+  const highlightedSet = useMemo(() => new Set(highlightedSubId2s), [highlightedSubId2s]);
 
   const getCurrentPreferences = async () => {
     const cached = queryClient.getQueryData<UserPreferences>(highlightQueryKey);

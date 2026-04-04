@@ -1,6 +1,14 @@
 import { useMemo, useState } from 'react';
-import { Typography, Tabs, Button, Input, Modal, Dropdown, Badge } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, MoreOutlined } from '@ant-design/icons';
+import { Typography, Tabs, Button, Input, Modal, Dropdown, Badge, Card, Space, Tag } from 'antd';
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  MoreOutlined,
+  FolderOpenOutlined,
+  AppstoreOutlined,
+  StarOutlined,
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import SavedProductsPanel from '../components/SavedProductsPanel';
 import { useHighlight } from '../hooks/useHighlight';
@@ -9,7 +17,7 @@ import { useSavedProducts } from '../hooks/useSavedProducts';
 import { useProductFolders } from '../hooks/useProductFolders';
 import type { SavedProduct, SavedProductStats } from '../types';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 export default function SavedProductsPage() {
   const navigate = useNavigate();
@@ -101,6 +109,9 @@ export default function SavedProductsPage() {
     await moveProduct(subId2, folderId);
   };
 
+  const filteredItems = getFilteredItems();
+  const highlightedSavedCount = savedProducts.filter((product) => highlightedSet.has(product.subId2)).length;
+
   const tabItems = [
     {
       key: 'all',
@@ -163,20 +174,52 @@ export default function SavedProductsPage() {
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <Title level={3} style={{ margin: 0 }}>
-          Danh sách mã hàng đã lưu
-        </Title>
-        <Button icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
+    <div className="saved-page space-y-4">
+      <div className="saved-hero">
+        <div>
+          <Text className="saved-eyebrow">Saved Products</Text>
+          <Title level={3} style={{ margin: '6px 0 4px' }}>
+            Danh sách mã hàng đã lưu
+          </Title>
+          <Text type="secondary">
+            Quản lý danh mục sản phẩm, di chuyển nhanh giữa folder và mở báo cáo chỉ với một click.
+          </Text>
+        </div>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
           Tạo folder
         </Button>
       </div>
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
+      <div className="saved-metric-grid">
+        <Card className="saved-metric-card" variant="borderless">
+          <Text type="secondary">Tổng sản phẩm đã lưu</Text>
+          <div className="saved-metric-value"><AppstoreOutlined /> {savedProducts.length}</div>
+          <Text className="saved-metric-caption">Tất cả sản phẩm bookmark</Text>
+        </Card>
+        <Card className="saved-metric-card" variant="borderless">
+          <Text type="secondary">Số folder</Text>
+          <div className="saved-metric-value"><FolderOpenOutlined /> {folders.length}</div>
+          <Text className="saved-metric-caption">Không tính tab hệ thống</Text>
+        </Card>
+        <Card className="saved-metric-card" variant="borderless">
+          <Text type="secondary">Đang highlight</Text>
+          <div className="saved-metric-value"><StarOutlined /> {highlightedSavedCount}</div>
+          <Text className="saved-metric-caption">Trong số mã đã lưu</Text>
+        </Card>
+      </div>
+
+      <div className="saved-tabs-wrap">
+        <div className="saved-tabs-header">
+          <Space wrap>
+            <Tag color="blue">Đang xem: {activeTab === 'all' ? 'Tất cả' : activeTab === 'uncategorized' ? 'Chưa phân loại' : folders.find((f) => f._id === activeTab)?.name ?? 'Folder'}</Tag>
+            <Tag color="cyan">Số lượng: {filteredItems.length}</Tag>
+          </Space>
+        </div>
+        <Tabs className="saved-tabs" activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
+      </div>
 
       <SavedProductsPanel
-        items={getFilteredItems()}
+        items={filteredItems}
         highlightedSet={highlightedSet}
         statsBySubId={statsBySubId}
         loading={isSavedProductsLoading}

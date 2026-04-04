@@ -117,7 +117,7 @@ export class ImportService {
 
     for (let i = 0; i < remainingSessions.length; i++) {
       const newOrder = i + 1;
-      const s = remainingSessions[i]!;
+      const s = remainingSessions[i];
 
       if (s.importOrder !== newOrder) {
         await this.sessionModel.updateOne(
@@ -290,14 +290,11 @@ export class ImportService {
 
     // Find column indices by header name
     let campaignColIdx = headers.findIndex(
-      (h) =>
-        typeof h === 'string' &&
-        h.trim().includes('Tên chiến dịch'),
+      (h) => typeof h === 'string' && h.trim().includes('Tên chiến dịch'),
     );
     let cpColIdx = headers.findIndex(
       (h) =>
-        typeof h === 'string' &&
-        h.trim().includes('Số tiền đã chi tiêu (VND)'),
+        typeof h === 'string' && h.trim().includes('Số tiền đã chi tiêu (VND)'),
     );
 
     // Fallback to fixed indices if header names not found
@@ -319,9 +316,7 @@ export class ImportService {
       const lastDashIdx = campaignName.lastIndexOf('-');
       const hasDash = lastDashIdx >= 0;
       const subId = (
-        hasDash
-          ? campaignName.substring(lastDashIdx + 1)
-          : campaignName
+        hasDash ? campaignName.substring(lastDashIdx + 1) : campaignName
       ).trim();
       if (!subId) continue;
 
@@ -351,14 +346,14 @@ export class ImportService {
       throw new BadRequestException('CSV file has no data rows');
     }
 
-    const headerLine = lines[0]!;
+    const headerLine = lines[0];
     const headers = this.parseCsvLine(headerLine);
 
-    let campaignColIdx = headers.findIndex(
-      (h) => h.trim().includes('Tên chiến dịch'),
+    let campaignColIdx = headers.findIndex((h) =>
+      h.trim().includes('Tên chiến dịch'),
     );
-    let cpColIdx = headers.findIndex(
-      (h) => h.trim().includes('Số tiền đã chi tiêu (VND)'),
+    let cpColIdx = headers.findIndex((h) =>
+      h.trim().includes('Số tiền đã chi tiêu (VND)'),
     );
 
     // Fallback to fixed indices if header names not found
@@ -374,9 +369,7 @@ export class ImportService {
       const fields = this.parseCsvLine(line);
 
       // Parse CP: remove commas, quotes, spaces
-      const rawCp = (fields[cpColIdx] || '0')
-        .replace(/[",\s]/g, '')
-        .trim();
+      const rawCp = (fields[cpColIdx] || '0').replace(/[",\s]/g, '').trim();
       const cpValue = Number(rawCp) || 0;
       if (cpValue <= 0) continue;
 
@@ -386,9 +379,7 @@ export class ImportService {
       const lastDashIdx = campaignName.lastIndexOf('-');
       const hasDash = lastDashIdx >= 0;
       const subId = (
-        hasDash
-          ? campaignName.substring(lastDashIdx + 1)
-          : campaignName
+        hasDash ? campaignName.substring(lastDashIdx + 1) : campaignName
       ).trim();
       if (!subId) continue;
 
@@ -428,17 +419,14 @@ export class ImportService {
     const headers = jsonData[0] as string[];
 
     const subId1Idx = headers.findIndex(
-      (h) =>
-        typeof h === 'string' && h.trim() === 'Sub_id1',
+      (h) => typeof h === 'string' && h.trim() === 'Sub_id1',
     );
     const subId2Idx = headers.findIndex(
-      (h) =>
-        typeof h === 'string' && h.trim() === 'Sub_id2',
+      (h) => typeof h === 'string' && h.trim() === 'Sub_id2',
     );
     const dtIdx = headers.findIndex(
       (h) =>
-        typeof h === 'string' &&
-        h.trim().includes('Tổng hoa hồng đơn hàng'),
+        typeof h === 'string' && h.trim().includes('Tổng hoa hồng đơn hàng'),
     );
 
     if (subId1Idx === -1 && subId2Idx === -1) {
@@ -447,9 +435,7 @@ export class ImportService {
       );
     }
     if (dtIdx === -1) {
-      throw new BadRequestException(
-        'XLSX file missing commission column',
-      );
+      throw new BadRequestException('XLSX file missing commission column');
     }
 
     const results: AffiliateRow[] = [];
@@ -486,15 +472,11 @@ export class ImportService {
       throw new BadRequestException('CSV file has no data rows');
     }
 
-    const headerLine = lines[0]!;
+    const headerLine = lines[0];
     const headers = this.parseCsvLine(headerLine);
 
-    const subId1Idx = headers.findIndex(
-      (h) => h.trim() === 'Sub_id1',
-    );
-    const subId2Idx = headers.findIndex(
-      (h) => h.trim() === 'Sub_id2',
-    );
+    const subId1Idx = headers.findIndex((h) => h.trim() === 'Sub_id1');
+    const subId2Idx = headers.findIndex((h) => h.trim() === 'Sub_id2');
     const dtIdx = headers.findIndex((h) =>
       h.trim().includes('Tổng hoa hồng đơn hàng'),
     );
@@ -505,9 +487,7 @@ export class ImportService {
       );
     }
     if (dtIdx === -1) {
-      throw new BadRequestException(
-        'CSV file missing commission column',
-      );
+      throw new BadRequestException('CSV file missing commission column');
     }
 
     const results: AffiliateRow[] = [];
@@ -522,9 +502,7 @@ export class ImportService {
       if (!subId1 && !subId2) continue;
 
       // Parse number: remove commas, quotes, spaces
-      const rawDt = (fields[dtIdx] || '0')
-        .replace(/[",\s]/g, '')
-        .trim();
+      const rawDt = (fields[dtIdx] || '0').replace(/[",\s]/g, '').trim();
       const dt = Number(rawDt) || 0;
 
       results.push({ subId1, subId2, dt });
@@ -539,7 +517,7 @@ export class ImportService {
     let inQuotes = false;
 
     for (let i = 0; i < line.length; i++) {
-      const char = line[i]!;
+      const char = line[i];
       if (inQuotes) {
         if (char === '"') {
           if (i + 1 < line.length && line[i + 1] === '"') {

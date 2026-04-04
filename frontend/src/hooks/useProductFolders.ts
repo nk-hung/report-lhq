@@ -1,13 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../api/axios';
-import { isAuthenticated } from './useAuth';
+import { getUsername, isAuthenticated } from './useAuth';
 import type { ApiResponse, ProductFolder } from '../types';
 
-export const foldersQueryKey = ['product-folders'] as const;
+const getFoldersQueryKey = (username: string) => ['product-folders', username] as const;
 
 export function useProductFolders() {
   const queryClient = useQueryClient();
+  const username = getUsername() || 'anonymous';
+  const foldersQueryKey = getFoldersQueryKey(username);
 
   const query = useQuery({
     queryKey: foldersQueryKey,
@@ -52,7 +54,7 @@ export function useProductFolders() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: foldersQueryKey });
-      await queryClient.invalidateQueries({ queryKey: ['saved-products'] });
+      await queryClient.invalidateQueries({ queryKey: ['saved-products', username] });
     },
     onError: () => {
       message.error('Không thể xóa folder.');

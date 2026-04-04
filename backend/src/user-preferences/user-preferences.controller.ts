@@ -48,7 +48,9 @@ export class UserPreferencesController {
   }
 
   @Delete('highlight/:subId2')
-  @ApiOperation({ summary: 'Remove one highlighted Sub ID for the logged-in user' })
+  @ApiOperation({
+    summary: 'Remove one highlighted Sub ID for the logged-in user',
+  })
   @ApiParam({ name: 'subId2', example: 'DXYTuiXinh2101' })
   async removeHighlightedSubId(
     @Req() req: any,

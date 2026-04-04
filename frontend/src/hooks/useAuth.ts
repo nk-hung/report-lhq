@@ -6,6 +6,7 @@ import type { LoginRequest, RegisterRequest, AuthResponse, ApiResponse, UserInfo
 
 export function useLogin() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (data: LoginRequest) => {
@@ -13,6 +14,7 @@ export function useLogin() {
       return res.data;
     },
     onSuccess: (data) => {
+      queryClient.clear();
       localStorage.setItem('token', data.data.access_token);
       localStorage.setItem('role', data.data.role);
       localStorage.setItem('username', data.data.username);
@@ -27,8 +29,10 @@ export function useLogin() {
 
 export function useLogout() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   return () => {
+    queryClient.clear();
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('username');

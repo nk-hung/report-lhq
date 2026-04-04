@@ -18,3 +18,5 @@ export class SavedProduct {
 export const SavedProductSchema = SchemaFactory.createForClass(SavedProduct);
 
 SavedProductSchema.index({ userId: 1, subId2: 1 }, { unique: true });
+SavedProductSchema.index({ userId: 1, createdAt: -1, subId2: 1 });
+SavedProductSchema.index({ userId: 1, folderId: 1, createdAt: -1, subId2: 1 });

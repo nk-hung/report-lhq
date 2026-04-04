@@ -1,4 +1,10 @@
-import { Logger, MiddlewareConsumer, Module, NestModule, OnModuleInit } from '@nestjs/common';
+import {
+  Logger,
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  OnModuleInit,
+} from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { InjectConnection } from '@nestjs/mongoose';
@@ -14,7 +20,9 @@ import { ProductFoldersModule } from './product-folders/product-folders.module';
 
 @Module({
   imports: [
-    MongooseModule.forRoot('mongodb://mongoadmin:secret@localhost:27017/camp-report?authSource=admin'),
+    MongooseModule.forRoot(
+      'mongodb://mongoadmin:secret@localhost:27017/camp-report?authSource=admin',
+    ),
     AuthModule,
     ImportModule,
     ReportModule,

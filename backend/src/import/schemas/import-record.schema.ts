@@ -30,5 +30,7 @@ export class ImportRecord {
   userId!: Types.ObjectId;
 }
 
-export const ImportRecordSchema =
-  SchemaFactory.createForClass(ImportRecord);
+export const ImportRecordSchema = SchemaFactory.createForClass(ImportRecord);
+
+ImportRecordSchema.index({ userId: 1, subId: 1, importOrder: 1 });
+ImportRecordSchema.index({ sessionId: 1, userId: 1 });

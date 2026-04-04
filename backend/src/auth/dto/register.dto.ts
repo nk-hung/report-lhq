@@ -13,6 +13,8 @@ export class RegisterDto {
   @Matches(/[A-Z]/, { message: 'Mật khẩu phải có ít nhất 1 chữ in hoa' })
   @Matches(/[a-z]/, { message: 'Mật khẩu phải có ít nhất 1 chữ thường' })
   @Matches(/[0-9]/, { message: 'Mật khẩu phải có ít nhất 1 chữ số' })
-  @Matches(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, { message: 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt' })
+  @Matches(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, {
+    message: 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt',
+  })
   password!: string;
 }

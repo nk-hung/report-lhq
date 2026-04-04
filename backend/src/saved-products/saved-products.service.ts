@@ -14,9 +14,7 @@ export class SavedProductsService {
   ) {}
 
   async saveProduct(userId: string, subId2: string, folderId?: string) {
-    const folderObjectId = folderId
-      ? new Types.ObjectId(folderId)
-      : null;
+    const folderObjectId = folderId ? new Types.ObjectId(folderId) : null;
 
     const savedProduct = await this.savedProductModel
       .findOneAndUpdate(
