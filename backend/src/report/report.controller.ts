@@ -1,7 +1,16 @@
-import { Controller, Get, Delete, UseGuards, Req, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Delete,
+  UseGuards,
+  Req,
+  Query,
+  Param,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
+  ApiParam,
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
@@ -66,6 +75,16 @@ export class ReportController {
       sessionId,
       campaignName,
     );
+  }
+
+  @Delete('records/:recordId')
+  @ApiOperation({ summary: 'Delete a single import record from the comparison report' })
+  @ApiParam({
+    name: 'recordId',
+    description: 'ImportRecord id to delete',
+  })
+  async deleteRecord(@Req() req: any, @Param('recordId') recordId: string) {
+    return this.reportService.deleteRecord(req.user.userId, recordId);
   }
 }
 

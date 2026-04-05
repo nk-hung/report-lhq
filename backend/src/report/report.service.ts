@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import {
@@ -33,13 +33,24 @@ type CompareTotalsAggregate = {
   tdt: number;
 };
 
-type CompareRecordSnapshot = Pick<ImportRecord, 'subId' | 'cp' | 'dt'>;
+type CompareRecordSnapshot = {
+  _id: Types.ObjectId;
+  sessionId: Types.ObjectId;
+  subId: string;
+  cp: number;
+  dt: number;
+  importDate: Date;
+  importOrder: number;
+};
 
 type CompareDay = {
   day: number;
   cp: number;
   dt: number;
   hq: number;
+  recordId: string;
+  importDate: string;
+  importOrder: number;
 };
 
 type CompareRow = {
@@ -66,6 +77,30 @@ export class ReportService {
 
   private escapeRegex(input: string): string {
     return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  private async recalculateImportOrder(userObjId: Types.ObjectId) {
+    const remainingSessions = await this.sessionModel
+      .find({ userId: userObjId })
+      .sort({ importDate: 1, importOrder: 1 })
+      .lean();
+
+    for (let i = 0; i < remainingSessions.length; i++) {
+      const newOrder = i + 1;
+      const session = remainingSessions[i];
+
+      if (session.importOrder !== newOrder) {
+        await this.sessionModel.updateOne(
+          { _id: session._id },
+          { $set: { importOrder: newOrder } },
+        );
+
+        await this.recordModel.updateMany(
+          { sessionId: session._id },
+          { $set: { importOrder: newOrder } },
+        );
+      }
+    }
   }
 
   async getTotal(userId: string) {
@@ -262,7 +297,7 @@ export class ReportService {
         subId: { $in: latestSubIds },
         importOrder: { $lte: currentSession.importOrder },
       })
-      .select('subId cp dt')
+      .select('_id sessionId subId cp dt importDate importOrder')
       .sort({ importOrder: -1, _id: -1 })
       .lean<CompareRecordSnapshot[]>();
 
@@ -292,6 +327,9 @@ export class ReportService {
             cp: r.cp,
             dt: r.dt,
             hq: r.cp > 0 ? Math.round((r.dt / r.cp) * 100 * 100) / 100 : 0,
+            recordId: r._id.toString(),
+            importDate: r.importDate.toISOString(),
+            importOrder: r.importOrder,
           }),
         );
 
@@ -341,5 +379,47 @@ export class ReportService {
     await this.recordModel.deleteMany({ userId: userObjId });
     await this.sessionModel.deleteMany({ userId: userObjId });
     return { deleted: true };
+  }
+
+  async deleteRecord(userId: string, recordId: string) {
+    if (!Types.ObjectId.isValid(recordId)) {
+      throw new NotFoundException('Record not found');
+    }
+
+    const userObjId = new Types.ObjectId(userId);
+    const recordObjId = new Types.ObjectId(recordId);
+
+    const record = await this.recordModel
+      .findOne({ _id: recordObjId, userId: userObjId })
+      .select('_id sessionId')
+      .lean();
+
+    if (!record) {
+      throw new NotFoundException('Record not found');
+    }
+
+    await this.recordModel.deleteOne({ _id: recordObjId, userId: userObjId });
+
+    const remainingSessionRecords = await this.recordModel.countDocuments({
+      sessionId: record.sessionId,
+      userId: userObjId,
+    });
+
+    let deletedSessionId: string | null = null;
+
+    if (remainingSessionRecords === 0) {
+      await this.sessionModel.deleteOne({
+        _id: record.sessionId,
+        userId: userObjId,
+      });
+      await this.recalculateImportOrder(userObjId);
+      deletedSessionId = record.sessionId.toString();
+    }
+
+    return {
+      deleted: true,
+      deletedRecordId: recordId,
+      deletedSessionId,
+    };
   }
 }

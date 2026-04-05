@@ -53,6 +53,26 @@ export class ImportService {
     );
   }
 
+  private getShopeeJoinMetadata(campaignName: string): {
+    subId: string;
+    joinColumn: 'sub_id1' | 'sub_id2';
+  } {
+    const lastDashIdx = campaignName.lastIndexOf('-');
+    const lastUnderscoreIdx = campaignName.lastIndexOf('_');
+    const lastSeparatorIdx = Math.max(lastDashIdx, lastUnderscoreIdx);
+    const usesAffiliateSubId2 = lastSeparatorIdx >= 0;
+    const subId = (
+      usesAffiliateSubId2
+        ? campaignName.substring(lastSeparatorIdx + 1)
+        : campaignName
+    ).trim();
+
+    return {
+      subId,
+      joinColumn: usesAffiliateSubId2 ? 'sub_id2' : 'sub_id1',
+    };
+  }
+
   /**
    * Get all import sessions for a user, sorted by importDate DESC.
    * Each session includes recordCount (number of ImportRecords).
@@ -211,8 +231,8 @@ export class ImportService {
     }
 
     // Join Shopee & Affiliate: join column depends on campaign name format
-    // - Campaign có dấu '-': subId join với Sub_id2
-    // - Campaign không có dấu '-': subId join với Sub_id1
+    // - Campaign có dấu '-' hoặc '_': subId join với Sub_id2
+    // - Campaign không có '-' và không có '_': subId join với Sub_id1
     const allSubIds = new Set([
       ...shopeeMap.keys(),
       ...affiliateMapById1.keys(),
@@ -313,18 +333,14 @@ export class ImportService {
       const campaignName = String(row[campaignColIdx] || '').trim();
       if (!campaignName) continue;
 
-      const lastDashIdx = campaignName.lastIndexOf('-');
-      const hasDash = lastDashIdx >= 0;
-      const subId = (
-        hasDash ? campaignName.substring(lastDashIdx + 1) : campaignName
-      ).trim();
+      const { subId, joinColumn } = this.getShopeeJoinMetadata(campaignName);
       if (!subId) continue;
 
       results.push({
         subId,
         campaignName,
         cp: cpValue,
-        joinColumn: hasDash ? 'sub_id2' : 'sub_id1',
+        joinColumn,
       });
     }
 
@@ -376,18 +392,14 @@ export class ImportService {
       const campaignName = (fields[campaignColIdx] || '').trim();
       if (!campaignName) continue;
 
-      const lastDashIdx = campaignName.lastIndexOf('-');
-      const hasDash = lastDashIdx >= 0;
-      const subId = (
-        hasDash ? campaignName.substring(lastDashIdx + 1) : campaignName
-      ).trim();
+      const { subId, joinColumn } = this.getShopeeJoinMetadata(campaignName);
       if (!subId) continue;
 
       results.push({
         subId,
         campaignName,
         cp: cpValue,
-        joinColumn: hasDash ? 'sub_id2' : 'sub_id1',
+        joinColumn,
       });
     }
 
