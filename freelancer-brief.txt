@@ -1,0 +1,163 @@
+YÊU CẦU BÁO GIÁ XÂY DỰNG WEB BÁO CÁO CHIẾN DỊCH
+
+Tôi cần thuê freelancer xây dựng một hệ thống web nội bộ để nhập file dữ liệu, xử lý đối soát doanh thu/chi phí, theo dõi hiệu quả chiến dịch và quản lý mã hàng hóa.
+
+Mục tiêu của hệ thống:
+- Có một web app để đăng nhập và sử dụng nội bộ.
+- Cho phép import dữ liệu từ file Excel/CSV.
+- Tự động xử lý, ghép nối và tính toán dữ liệu theo rule nghiệp vụ có sẵn.
+- Hiển thị báo cáo tổng hợp và báo cáo so sánh để theo dõi hiệu quả chiến dịch.
+- Cho phép lưu, đánh dấu và phân loại mã hàng hóa.
+- Có thể deploy lên VPS, gắn domain và chạy ổn định.
+
+1. Chức năng cần có
+
+1.1. Đăng nhập và phân quyền
+- Đăng nhập bằng username và password.
+- Sử dụng JWT hoặc cơ chế xác thực tương đương.
+- Có 2 vai trò: superadmin và user.
+- Token được lưu để người dùng không phải đăng nhập lại liên tục.
+- Nếu hết phiên hoặc token không hợp lệ thì tự động quay về trang đăng nhập.
+
+1.2. Quản lý người dùng
+- Superadmin có thể tạo tài khoản user mới.
+- Superadmin xem danh sách user.
+- Superadmin xóa user.
+- User thường không được phép tạo/xóa tài khoản.
+
+1.3. Import dữ liệu
+- Upload 2 file mỗi lần import:
+  1) File Hộ Kinh Doanh (.xlsx hoặc .csv)
+  2) File AffiliateCommissionReport (.csv hoặc .xlsx)
+- Hệ thống cần tự nhận diện định dạng file.
+- Cần đọc đúng các cột dữ liệu cần thiết.
+- Cần validate file và thông báo lỗi nếu thiếu cột hoặc sai định dạng.
+- Lưu lịch sử import theo ngày và theo thứ tự import.
+- Có danh sách lịch sử các session đã import.
+- Có thể xóa 1 session import và tự động cập nhật lại thứ tự import.
+
+1.4. Rule xử lý dữ liệu
+- Từ file Hộ Kinh Doanh:
+  - Lấy cột "Tên chiến dịch" và "Số tiền đã chi tiêu (VND)".
+  - Chỉ lấy các dòng có chi tiêu > 0.
+  - Nếu "Tên chiến dịch" có dấu "-" thì lấy phần cuối cùng sau dấu "-" cuối cùng làm Sub ID.
+  - Nếu không có dấu "-" thì lấy nguyên tên chiến dịch làm Sub ID.
+  - CP = tổng chi tiêu theo Sub ID.
+- Từ file AffiliateCommissionReport:
+  - Lấy cột "Sub_id1", "Sub_id2", "Tổng hoa hồng đơn hàng(₫)".
+  - DT = tổng hoa hồng theo Sub_id1/Sub_id2.
+- Rule join:
+  - Nếu tên chiến dịch có dấu "-" thì join với Sub_id2.
+  - Nếu tên chiến dịch không có dấu "-" thì join với Sub_id1.
+- Công thức tính:
+  - HQ (%) = (DT / CP) x 100
+  - TLN = TDT - TCP
+- Mỗi campaign theo dõi tối đa 10 ngày liên tiếp.
+- Từ ngày thứ 11 trở đi thì campaign xuống hàng phía dưới.
+
+1.5. Dashboard tổng quan
+- Hiển thị 3 KPI:
+  - Tổng Chi Phí (TCP)
+  - Tổng Doanh Thu (TDT)
+  - Tổng Lợi Nhuận (TLN)
+- Định dạng tiền tệ VND.
+- Giao diện responsive trên desktop và mobile cơ bản.
+
+1.6. Báo cáo so sánh
+- Có trang báo cáo chính để hiển thị bảng dữ liệu theo Sub ID.
+- Hiển thị các cột:
+  - Sub ID
+  - TCP
+  - TDT
+  - TLN
+  - Các cột theo ngày gồm CP, DT, HQ%
+- Có navigation để xem session mới nhất, cũ hơn, mới hơn, cũ nhất.
+- Có filter theo campaign name.
+- Có debounce search ở ô tìm kiếm.
+- Sort tăng/giảm được trên các cột số.
+- Giữ nguyên logic nhóm Sub ID khi sort.
+- Có fixed column và horizontal scroll.
+- Sub ID dài thì hiển thị ellipsis và tooltip.
+- Table cần sử dụng tốt với dữ liệu thực tế.
+
+1.7. Highlight mã hàng hóa
+- Click vào Sub ID để bật/tắt highlight.
+- Trạng thái highlight được lưu theo từng user.
+- Reload trang hoặc đăng nhập lại vẫn còn trạng thái highlight.
+- Có badge đếm số mã đang highlight.
+- Có nút clear toàn bộ highlight.
+
+1.8. Lưu mã hàng hóa và folder
+- Từ trang report, người dùng có thể lưu mã hàng hóa.
+- Có thể lưu không phân loại hoặc chọn folder.
+- Có popup/modal để chọn folder khi lưu.
+- Có thể tạo folder mới ngay trong lúc lưu.
+- Có trang riêng hiển thị danh sách mã đã lưu.
+- Có các tab: Tất cả, Chưa phân loại, Folder tùy chỉnh.
+- Có thể đổi tên folder.
+- Có thể xóa folder.
+- Khi xóa folder thì sản phẩm bên trong chuyển về chưa phân loại.
+- Có thể di chuyển sản phẩm giữa các folder.
+- Click vào mã đã lưu có thể chuyển sang trang report và highlight đúng mã đó.
+
+1.9. Reset dữ liệu
+- Có chức năng xóa toàn bộ dữ liệu import của user.
+- Không xóa danh sách mã đã lưu và không xóa highlight nếu muốn giữ các phần này.
+
+1.10. API và tài liệu kỹ thuật
+- Cần có backend API rõ ràng.
+- Ưu tiên có Swagger hoặc tài liệu API cơ bản.
+- Response format thống nhất.
+
+2. Công nghệ mong muốn
+- Frontend: React + TypeScript
+- Backend: NestJS + TypeScript
+- Database: MongoDB
+- Xác thực: JWT
+- Import file: xlsx/csv
+- Deploy: Docker + Nginx trên VPS
+
+Nếu freelancer đề xuất stack khác hợp lý hơn thì có thể trao đổi thêm, nhưng ưu tiên stack trên.
+
+3. Yêu cầu giao diện
+- Giao diện admin/nội bộ, ưu tiên dễ dùng, rõ ràng, nhanh.
+- Không cần thiết kế marketing.
+- Cần hiển thị bảng report rõ ràng và dễ thao tác.
+- Responsive cơ bản trên laptop và mobile.
+
+4. Yêu cầu deploy
+- Tôi đã có:
+  - VPS 1 tháng: 270.000 VND
+  - Domain năm đầu: 105.000 VND
+- Cần freelancer báo giá phần xây dựng hệ thống và nếu có thì tách riêng chi phí deploy/cấu hình.
+- Nếu freelancer có hỗ trợ deploy lên VPS, cấu hình domain, reverse proxy, build production thì vui lòng báo giá rõ phần này.
+
+5. Yêu cầu báo giá
+Tôi muốn freelancer báo giá theo 1 trong 2 cách sau:
+- Báo giá tổng trọn gói cho toàn bộ hệ thống.
+- Hoặc báo giá tách theo module, ví dụ:
+  - Đăng nhập và phân quyền
+  - Quản lý user
+  - Import file và xử lý dữ liệu
+  - Dashboard
+  - Báo cáo so sánh
+  - Highlight và lưu mã hàng hóa
+  - Folder và quản lý mã đã lưu
+  - Deploy VPS/domain
+
+Vui lòng cho biết thêm:
+- Tổng chi phí dự kiến.
+- Thời gian thực hiện dự kiến.
+- Số đợt thanh toán đề xuất.
+- Số vòng chỉnh sửa giao diện/chức năng.
+- Thời gian bảo hành hỗ trợ sửa lỗi sau khi bàn giao.
+- Các hạng mục nào không nằm trong phạm vi báo giá.
+
+6. Mong muốn khi hợp tác
+- Làm đúng scope và rõ phạm vi ngay từ đầu.
+- Có bản demo để nghiệm thu từng giai đoạn.
+- Bàn giao source code đầy đủ.
+- Hỗ trợ deploy production.
+- Ghi rõ phần bảo trì nếu có tính phí hàng tháng.
+
+Nếu cần, freelancer có thể đề xuất thêm cách tối ưu scope hoặc chia thành giai đoạn MVP trước, sau đó nâng cấp thêm.
