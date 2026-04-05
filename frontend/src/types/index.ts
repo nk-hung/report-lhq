@@ -42,6 +42,9 @@ export interface DayRecord {
   cp: number;
   dt: number;
   hq: number;
+  recordId?: string;
+  importDate?: string;
+  importOrder?: number;
 }
 
 export interface CompareRecord {

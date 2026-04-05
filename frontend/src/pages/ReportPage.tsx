@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
-import { Table, Typography, Spin, Button, Space, Tooltip, Input, Tag, Empty } from 'antd';
+import { Table, Typography, Spin, Button, Space, Tooltip, Input, Tag, Empty, Popconfirm } from 'antd';
 import {
   DoubleLeftOutlined,
   LeftOutlined,
@@ -14,7 +14,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { useSearchParams } from 'react-router-dom';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
-import { useCompareReport } from '../hooks/useReport';
+import { useCompareReport, useDeleteReportRecord } from '../hooks/useReport';
 import { useHighlight } from '../hooks/useHighlight';
 import { useSavedProducts } from '../hooks/useSavedProducts';
 import { useProductFolders } from '../hooks/useProductFolders';
@@ -153,6 +153,7 @@ export default function ReportPage() {
   } = useHighlight();
   const { savedProductSet, saveProduct, unsaveProduct, isUpdating: isSavedProductsUpdating } = useSavedProducts();
   const { folders, createFolder } = useProductFolders();
+  const { deleteReportRecord, isDeleting: isDeletingRecord, deletingRecordId } = useDeleteReportRecord();
   const [savingSubId, setSavingSubId] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>(null);
@@ -366,7 +367,31 @@ export default function ReportPage() {
             render: (_: unknown, record: CompareTableRecord) => {
               const day = record.daysByNumber[d];
               if (!day) return '-';
-              return formatVND(day.cp);
+              return (
+                <div className="flex flex-col items-start gap-1">
+                  <span>{formatVND(day.cp)}</span>
+                  {day.recordId ? (
+                    <Popconfirm
+                      title="Xóa bản ghi này?"
+                      description={`Sub ID: ${record.subId}${day.importOrder ? ` • Lần import ${day.importOrder}` : ''}`}
+                      okText="Xóa"
+                      cancelText="Hủy"
+                      okButtonProps={{ danger: true, loading: deletingRecordId === day.recordId }}
+                      onConfirm={() => deleteReportRecord(day.recordId!)}
+                    >
+                      <Button
+                        type="link"
+                        danger
+                        size="small"
+                        className="h-auto! p-0!"
+                        loading={isDeletingRecord && deletingRecordId === day.recordId}
+                      >
+                        Xóa bản ghi
+                      </Button>
+                    </Popconfirm>
+                  ) : null}
+                </div>
+              );
             },
           },
           {
@@ -406,7 +431,18 @@ export default function ReportPage() {
     }
 
     return builtColumns;
-  }, [highlightedSet, hieuQuaCellBg, maxDays, rowSpanMap, savedProductSet, sortKey, sortOrder]);
+  }, [
+    deleteReportRecord,
+    deletingRecordId,
+    highlightedSet,
+    hieuQuaCellBg,
+    isDeletingRecord,
+    maxDays,
+    rowSpanMap,
+    savedProductSet,
+    sortKey,
+    sortOrder,
+  ]);
 
   if (isLoading && !data) {
     return (
