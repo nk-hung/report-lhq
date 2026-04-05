@@ -31,7 +31,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: /api
+        VITE_API_URL: http://api.baocaochiendich.site/api
     container_name: camp-report-frontend
     restart: unless-stopped
     depends_on:
@@ -49,6 +49,6 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
 volumes:
   mongo_data:
