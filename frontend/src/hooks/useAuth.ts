@@ -1,8 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { message } from 'antd';
 import api from '../api/axios';
 import type { LoginRequest, RegisterRequest, AuthResponse, ApiResponse, UserInfo } from '../types';
+
+type ApiErrorResponse = {
+  message?: string | string[];
+};
+
+function getErrorMessage(error: unknown, fallbackMessage: string) {
+  if (error instanceof AxiosError) {
+    const errorMessage = error.response?.data?.message;
+
+    if (Array.isArray(errorMessage) && errorMessage.length > 0) {
+      return errorMessage.join(', ');
+    }
+
+    if (typeof errorMessage === 'string' && errorMessage.trim()) {
+      return errorMessage;
+    }
+  }
+
+  return fallbackMessage;
+}
 
 export function useLogin() {
   const navigate = useNavigate();
@@ -21,8 +42,10 @@ export function useLogin() {
       message.success('Đăng nhập thành công');
       navigate('/dashboard');
     },
-    onError: () => {
-      message.error('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      message.error(
+        getErrorMessage(error, 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.'),
+      );
     },
   });
 }
@@ -66,8 +89,10 @@ export function useCreateUser() {
       message.success('Tạo tài khoản thành công');
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
-    onError: () => {
-      message.error('Tạo tài khoản thất bại. Username có thể đã tồn tại.');
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      message.error(
+        getErrorMessage(error, 'Tạo tài khoản thất bại. Username có thể đã tồn tại.'),
+      );
     },
   });
 }
