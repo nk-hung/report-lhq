@@ -18,11 +18,13 @@ import { UserPreferencesModule } from './user-preferences/user-preferences.modul
 import { SavedProductsModule } from './saved-products/saved-products.module';
 import { ProductFoldersModule } from './product-folders/product-folders.module';
 
+const mongoUri =
+  process.env.MONGODB_URI ||
+  'mongodb://mongoadmin:secret@localhost:27017/camp-report?authSource=admin';
+
 @Module({
   imports: [
-    MongooseModule.forRoot(
-      'mongodb://mongoadmin:secret@localhost:27017/camp-report?authSource=admin',
-    ),
+    MongooseModule.forRoot(mongoUri),
     AuthModule,
     ImportModule,
     ReportModule,

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, Model, Types } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import {
   ImportRecord,
   ImportRecordDocument,
@@ -9,6 +9,51 @@ import {
   ImportSession,
   ImportSessionDocument,
 } from '../import/schemas/import-session.schema';
+
+type ReportTotalAggregate = {
+  _id: null;
+  totalCp: number;
+  totalDt: number;
+};
+
+type ExpendRow = {
+  subId: string;
+  campaignName: string;
+  totalCp: number;
+};
+
+type RevenueRow = {
+  subId: string;
+  totalDt: number;
+};
+
+type CompareTotalsAggregate = {
+  _id: string;
+  tcp: number;
+  tdt: number;
+};
+
+type CompareRecordSnapshot = Pick<ImportRecord, 'subId' | 'cp' | 'dt'>;
+
+type CompareDay = {
+  day: number;
+  cp: number;
+  dt: number;
+  hq: number;
+};
+
+type CompareRow = {
+  subId: string;
+  tcp: number;
+  tdt: number;
+  tln: number;
+  days: CompareDay[];
+};
+
+type SessionRef = {
+  _id: Types.ObjectId;
+  importOrder: number;
+};
 
 @Injectable()
 export class ReportService {
@@ -24,7 +69,7 @@ export class ReportService {
   }
 
   async getTotal(userId: string) {
-    const result = await this.recordModel.aggregate([
+    const result = await this.recordModel.aggregate<ReportTotalAggregate>([
       { $match: { userId: new Types.ObjectId(userId) } },
       {
         $group: {
@@ -35,7 +80,11 @@ export class ReportService {
       },
     ]);
 
-    const data = result[0] || { totalCp: 0, totalDt: 0 };
+    const data: Omit<ReportTotalAggregate, '_id'> = result[0] ?? {
+      totalCp: 0,
+      totalDt: 0,
+    };
+
     return {
       totalCp: data.totalCp,
       totalDt: data.totalDt,
@@ -44,7 +93,7 @@ export class ReportService {
   }
 
   async getExpend(userId: string) {
-    const result = await this.recordModel.aggregate([
+    const result = await this.recordModel.aggregate<ExpendRow>([
       { $match: { userId: new Types.ObjectId(userId) } },
       {
         $group: {
@@ -68,7 +117,7 @@ export class ReportService {
   }
 
   async getRevenue(userId: string) {
-    const result = await this.recordModel.aggregate([
+    const result = await this.recordModel.aggregate<RevenueRow>([
       { $match: { userId: new Types.ObjectId(userId) } },
       {
         $group: {
@@ -92,11 +141,13 @@ export class ReportService {
   private async findCurrentSession(
     userObjId: Types.ObjectId,
     sessionId?: string,
-  ) {
+  ): Promise<SessionRef | null> {
     if (sessionId && Types.ObjectId.isValid(sessionId)) {
       const session = await this.sessionModel
         .findOne({ _id: new Types.ObjectId(sessionId), userId: userObjId })
-        .lean();
+        .select('_id importOrder')
+        .lean<SessionRef>();
+
       if (session) {
         return session;
       }
@@ -104,8 +155,9 @@ export class ReportService {
 
     return this.sessionModel
       .findOne({ userId: userObjId })
+      .select('_id importOrder')
       .sort({ importOrder: -1 })
-      .lean();
+      .lean<SessionRef>();
   }
 
   async getCompare(userId: string, sessionId?: string, campaignName?: string) {
@@ -151,20 +203,21 @@ export class ReportService {
     ]);
 
     // Get all subIds from the current import session
-    const currentSessionMatch: FilterQuery<ImportRecordDocument> = {
-      userId: userObjId,
-      sessionId: currentSession._id,
-    };
-    if (trimmedCampaignName) {
-      currentSessionMatch.campaignName = {
-        $regex: this.escapeRegex(trimmedCampaignName),
-        $options: 'i',
-      };
-    }
-
     const latestSubIds = await this.recordModel.distinct(
       'subId',
-      currentSessionMatch,
+      trimmedCampaignName
+        ? {
+            userId: userObjId,
+            sessionId: currentSession._id,
+            campaignName: {
+              $regex: this.escapeRegex(trimmedCampaignName),
+              $options: 'i',
+            },
+          }
+        : {
+            userId: userObjId,
+            sessionId: currentSession._id,
+          },
     );
 
     if (latestSubIds.length === 0) {
@@ -184,7 +237,7 @@ export class ReportService {
     }
 
     // Get totals for these subIds up to and including the current session
-    const totals = await this.recordModel.aggregate([
+    const totals = await this.recordModel.aggregate<CompareTotalsAggregate>([
       {
         $match: {
           userId: userObjId,
@@ -209,11 +262,12 @@ export class ReportService {
         subId: { $in: latestSubIds },
         importOrder: { $lte: currentSession.importOrder },
       })
-      .sort({ importOrder: 1 })
-      .lean();
+      .select('subId cp dt')
+      .sort({ importOrder: -1, _id: -1 })
+      .lean<CompareRecordSnapshot[]>();
 
     // Group records by subId
-    const recordsBySubId = new Map<string, any[]>();
+    const recordsBySubId = new Map<string, CompareRecordSnapshot[]>();
     for (const record of allRecords) {
       const list = recordsBySubId.get(record.subId) || [];
       list.push(record);
@@ -221,7 +275,7 @@ export class ReportService {
     }
 
     // Build rows: split into chunks of MAX_DAYS_PER_ROW
-    const allRows: any[] = [];
+    const allRows: CompareRow[] = [];
     for (const t of totals) {
       const subRecords = recordsBySubId.get(t._id) || [];
 
@@ -232,12 +286,14 @@ export class ReportService {
         chunk += MAX_DAYS_PER_ROW
       ) {
         const chunkRecords = subRecords.slice(chunk, chunk + MAX_DAYS_PER_ROW);
-        const days = chunkRecords.map((r: any, index: number) => ({
-          day: index + 1,
-          cp: r.cp,
-          dt: r.dt,
-          hq: r.cp > 0 ? Math.round((r.dt / r.cp) * 100 * 100) / 100 : 0,
-        }));
+        const days = chunkRecords.map(
+          (r, index): CompareDay => ({
+            day: index + 1,
+            cp: r.cp,
+            dt: r.dt,
+            hq: r.cp > 0 ? Math.round((r.dt / r.cp) * 100 * 100) / 100 : 0,
+          }),
+        );
 
         allRows.push({
           subId: t._id,
@@ -262,7 +318,7 @@ export class ReportService {
 
     const maxDays = Math.min(
       MAX_DAYS_PER_ROW,
-      Math.max(...allRows.map((r: any) => r.days.length), 0),
+      Math.max(...allRows.map((r) => r.days.length), 0),
     );
 
     return {

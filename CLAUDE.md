@@ -60,7 +60,7 @@ camp-report-app/
 │       ├── api/         (axios.ts – interceptor auto-attach token)
 │       ├── components/  (AppLayout.tsx, ProtectedRoute.tsx, SavedProductsPanel.tsx, SaveFolderModal.tsx)
 │       ├── hooks/       (useAuth.ts, useReport.ts, useHighlight.ts, useSavedProducts.ts, useProductFolders.ts, useImportSessions.ts)
-│       ├── pages/       (LoginPage, DashboardPage, ImportPage, ReportPage, SavedProductsPage, AdminUsersPage)
+│       ├── pages/       (LoginPage, RegisterPage, DashboardPage, ImportPage, ReportPage, SavedProductsPage, AdminUsersPage)
 │       └── types/       (index.ts)
 ├── samples/          ← File mẫu để đọc cấu trúc cột
 └── CLAUDE.md
@@ -99,7 +99,8 @@ camp-report-app/
 ```
 { username (unique), password (bcrypt), role ('superadmin' | 'user', default 'user'), createdAt, updatedAt }
 ```
-- Super admin được seed tự động khi khởi động (admin/admin123) nếu chưa có
+- Super admin được seed tự động khi khởi động với username `admin` nếu chưa có
+- Code hiện tại hash mật khẩu cố định `Aa1234567@`; service có generate mật khẩu ngẫu nhiên để log ra console nhưng giá trị log này chưa khớp với mật khẩu thực tế đang lưu
 - Chỉ superadmin mới tạo được user mới
 
 ### ImportSession
@@ -158,7 +159,7 @@ Response sessions: `[{ _id, importDate, importOrder, recordCount }]`
 | GET    | `/report/total`    | Lũy kế tổng CP, DT, Profit  | –                           |
 | GET    | `/report/expend`   | Chi tiêu group by SubID     | –                           |
 | GET    | `/report/revenue`  | Doanh thu group by SubID    | –                           |
-| GET    | `/report/compare`  | So sánh theo session + phân trang | ?sessionId (optional)  |
+| GET    | `/report/compare`  | So sánh theo session + lọc campaign | ?sessionId (optional), ?campaignName (optional) |
 
 **Compare response:**
 ```json
@@ -221,13 +222,16 @@ Response sessions: `[{ _id, importDate, importOrder, recordCount }]`
 | `/saved-products`  | SavedProductsPage  | Yes  | Tabs folder: Tất cả / Chưa phân loại / Folder tùy chỉnh |
 | `/admin/users`     | AdminUsersPage     | Yes (superadmin) | Quản lý tài khoản user                  |
 
+Ghi chú: `RegisterPage.tsx` có tồn tại trong source frontend nhưng hiện chưa được mount vào router trong `frontend/src/App.tsx`, nên không có route đăng ký công khai.
+
 ## Chức năng chi tiết
 
 ### 1. Authentication & User Management
 - Đăng nhập với JWT, token lưu localStorage (kèm role + username)
-- Super admin (admin/admin123) được seed tự động khi backend khởi động
+- Super admin với username `admin` được seed tự động khi backend khởi động nếu chưa có
+- Theo code hiện tại, mật khẩu được lưu cho super admin mặc định là `Aa1234567@`; chuỗi mật khẩu random in ra console chưa phản ánh đúng mật khẩu đã hash
 - Chỉ superadmin mới tạo/xóa user (trang /admin/users)
-- Không có trang đăng ký công khai
+- Không có route đăng ký công khai; `RegisterPage.tsx` chỉ là file chưa được expose trong router
 - Auto-attach token qua Axios interceptor
 - 401 → redirect /login
 
@@ -250,6 +254,7 @@ Response sessions: `[{ _id, importDate, importOrder, recordCount }]`
 - HQ% > 200%: chữ xanh
 - Sort tăng/giảm trên tất cả cột số (TCP, TDT, TLN, CP, DT, HQ%) – giữ nguyên nhóm SubID khi sort
 - Navigation session: Mới nhất / Mới hơn / Cũ hơn / Cũ nhất
+- Có filter `campaignName` ở backend và debounce search ở frontend để lọc theo campaign của session hiện tại
 - Fixed columns + horizontal scroll, table height cố định (100vh - 280px)
 
 ### 5. Highlight mã hàng hóa

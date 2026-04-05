@@ -35,6 +35,18 @@ function formatPercent(value: number): string {
   return value.toFixed(1) + '%';
 }
 
+function formatImportColumnTitle(position: number): string {
+  if (position === 1) {
+    return 'Import gần nhất';
+  }
+
+  if (position === 2) {
+    return 'Import liền trước';
+  }
+
+  return `Import trước đó ${position - 1}`;
+}
+
 /** Calculate rowSpan map and group index for alternating colors */
 function useRowMerge(records: CompareTableRecord[]) {
   return useMemo(() => {
@@ -113,8 +125,8 @@ function usePreparedRecords(records: CompareRecord[]) {
     return records.map((record) => {
       const daysByNumber: Partial<Record<number, DayRecord>> = {};
 
-      for (const day of record.days) {
-        daysByNumber[day.day] = day;
+      for (const [index, day] of record.days.entries()) {
+        daysByNumber[index + 1] = day;
       }
 
       return {
@@ -340,7 +352,7 @@ export default function ReportPage() {
       const dayBg = d % 2 === 1 ? '#ffffff' : '#f5f5f5';
 
       builtColumns.push({
-        title: `Ngày ${d}`,
+        title: formatImportColumnTitle(d),
         onHeaderCell: () => ({ className: 'report-header-dark' }),
         children: [
           {
@@ -414,7 +426,7 @@ export default function ReportPage() {
           </div>
           <Space wrap>
             <Tag color="blue" icon={<DatabaseOutlined />}>Dòng hiển thị: {visibleRows}</Tag>
-            <Tag color="cyan" icon={<CalendarOutlined />}>Tối đa ngày: {maxDays}</Tag>
+            <Tag color="cyan" icon={<CalendarOutlined />}>Tối đa lần import: {maxDays}</Tag>
             <Tag color="gold" icon={<HighlightOutlined />}>Highlight: {highlightedSubId2s.length}</Tag>
           </Space>
         </div>
