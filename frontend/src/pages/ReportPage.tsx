@@ -305,7 +305,7 @@ export default function ReportPage() {
               rowSpan: rowSpanMap.get(index ?? 0) ?? 1,
               style: { backgroundColor: hieuQuaCellBg, fontWeight: 'bold' },
             }),
-            render: (val: number) => formatVND(val),
+            render: (val: number) => <span className="text-[15px]">{formatVND(val)}</span>,
           },
           {
             title: 'TDT',
@@ -321,7 +321,7 @@ export default function ReportPage() {
               rowSpan: rowSpanMap.get(index ?? 0) ?? 1,
               style: { backgroundColor: hieuQuaCellBg, fontWeight: 'bold' },
             }),
-            render: (val: number) => formatVND(val),
+            render: (val: number) => <span className="text-[15px]">{formatVND(val)}</span>,
           },
           {
             title: 'TLN',
@@ -338,7 +338,7 @@ export default function ReportPage() {
               style: { backgroundColor: hieuQuaCellBg, fontWeight: 'bold' },
             }),
             render: (val: number) => (
-              <span style={{
+              <span className="text-[15px]" style={{
                 color: val > 0 ? '#0000ff' : val < 0 ? '#cf1322' : undefined,
               }}>
                 {formatVND(val)}
@@ -368,8 +368,8 @@ export default function ReportPage() {
               const day = record.daysByNumber[d];
               if (!day) return '-';
               return (
-                <div className="flex flex-col items-start gap-1">
-                  <span>{formatVND(day.cp)}</span>
+                <div className="flex flex-col items-start gap-0.5">
+                  <span className="text-[15px]">{formatVND(day.cp)}</span>
                   {day.recordId ? (
                     <Popconfirm
                       title="Xóa bản ghi này?"
@@ -383,10 +383,10 @@ export default function ReportPage() {
                         type="link"
                         danger
                         size="small"
-                        className="h-auto! p-0!"
+                        className="h-auto! p-0! text-[10px]!"
                         loading={isDeletingRecord && deletingRecordId === day.recordId}
                       >
-                        Xóa bản ghi
+                        Xóa
                       </Button>
                     </Popconfirm>
                   ) : null}
@@ -405,7 +405,7 @@ export default function ReportPage() {
             render: (_: unknown, record: CompareTableRecord) => {
               const day = record.daysByNumber[d];
               if (!day) return '-';
-              return formatVND(day.dt);
+              return <span className="text-[15px]">{formatVND(day.dt)}</span>;
             },
           },
           {
@@ -420,7 +420,7 @@ export default function ReportPage() {
               const day = record.daysByNumber[d];
               if (!day) return '-';
               return (
-                <span style={{ fontWeight: 'bold', color: day.hq > 200 ? '#0000ff' : undefined }}>
+                <span className="text-[15px]" style={{ fontWeight: 'bold', color: day.hq > 200 ? '#0000ff' : undefined }}>
                   {formatPercent(day.hq)}
                 </span>
               );
