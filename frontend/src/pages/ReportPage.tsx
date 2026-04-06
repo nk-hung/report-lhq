@@ -420,7 +420,7 @@ export default function ReportPage() {
               const day = record.daysByNumber[d];
               if (!day) return '-';
               return (
-                <span className="text-[15px]" style={{ fontWeight: 'bold', color: day.hq > 200 ? '#0000ff' : undefined }}>
+                <span className="text-[15px]" style={{ fontWeight: 'bold', color: day.hq > 200 ? '#15803d' : undefined }}>
                   {formatPercent(day.hq)}
                 </span>
               );
