@@ -368,7 +368,7 @@ export default function ReportPage() {
               const day = record.daysByNumber[d];
               if (!day) return '-';
               return (
-                <div className="flex flex-col items-start gap-0.5">
+                <div className="flex items-center gap-1">
                   <span className="text-[15px]">{formatVND(day.cp)}</span>
                   {day.recordId ? (
                     <Popconfirm
