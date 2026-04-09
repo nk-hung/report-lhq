@@ -8,7 +8,6 @@ import AppLayout from './components/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
-const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const ImportPage = lazy(() => import('./pages/ImportPage'));
 const ReportPage = lazy(() => import('./pages/ReportPage'));
 const SavedProductsPage = lazy(() => import('./pages/SavedProductsPage'));
@@ -46,13 +45,12 @@ function App() {
                   </ProtectedRoute>
                 }
               >
-                <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/import" element={<ImportPage />} />
                 <Route path="/report" element={<ReportPage />} />
                 <Route path="/saved-products" element={<SavedProductsPage />} />
                 <Route path="/admin/users" element={<AdminUsersPage />} />
               </Route>
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/import" replace />} />
             </Routes>
           </Suspense>
         </BrowserRouter>
