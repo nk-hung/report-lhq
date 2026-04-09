@@ -23,11 +23,6 @@ export default function AppLayout() {
 
   const menuItems = [
     {
-      key: '/dashboard',
-      icon: <DashboardOutlined />,
-      label: 'Tổng quan',
-    },
-    {
       key: '/import',
       icon: <UploadOutlined />,
       label: 'Nhập liệu',
